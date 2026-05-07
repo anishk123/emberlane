@@ -36,11 +36,11 @@ Deploy your own private, secure endpoint in minutes:
 cargo run -- aws init --profile your-profile
 
 # 2. Deploy your chosen model
-# Option A: Cheapest Guaranteed Stable (TinyLlama on g4dn.xlarge)
+# Option A: Stable Starter (Qwen 2.5 1.5B on g4dn.xlarge)
 cargo run -- aws deploy --model tiny_demo --mode economy
 
-# Option B: Pro-Grade Stable (Llama 3.1 8B on g5.2xlarge)
-cargo run -- aws deploy --model llama31_8b --mode economy
+# Option B: Pro-Grade Stable (Qwen 2.5 7B on g5.2xlarge)
+cargo run -- aws deploy --model qwen25_7b --mode economy
 
 # 3. Chat with your live cloud hardware!
 cargo run -- aws chat "Why is Emberlane so cool?"
