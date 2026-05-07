@@ -2,7 +2,7 @@
 
 Inf2/Neuron is experimental in Emberlane.
 
-It may be promising for cost optimization, but Neuron adds real operational complexity:
+It can be worth benchmarking for specific workloads, but it is not a blanket replacement for NVIDIA G instances and Neuron adds real operational complexity:
 
 - model compatibility
 - Neuron runtime versions

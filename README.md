@@ -7,7 +7,7 @@
 ![Rust](https://img.shields.io/badge/rust-1.75%2B-orange)
 ![Terraform](https://img.shields.io/badge/terraform-validated-623CE4)
 ![AWS](https://img.shields.io/badge/AWS-supported-FF9900)
-![Inferentia2](https://img.shields.io/badge/Inf2-optimized-blueviolet)
+![Inferentia2](https://img.shields.io/badge/Inf2-experimental-blueviolet)
 
 ---
 
@@ -21,7 +21,7 @@ Running a `g5.xlarge` 24/7 costs **~$730/month**. Emberlane slashes that to unde
 ## ✨ Key Features
 - ⚡ **Auto-scaling:** Zero to Ready in <30s (using ASG Warm Pools).
 - 🔒 **Lambda WakeBridge:** Public Function URL entry point with an optional ALB header gate for extra dev/test friction.
-- 🏎️ **Optimized Runtimes:** Deeply tuned for **AWS Inferentia2 (Inf2)** and **NVIDIA G5**.
+- 🏎️ **Supported Runtimes:** CUDA/G5 is the default path; **AWS Inferentia2 (Inf2)** is available for experimental benchmarking.
 - 🛠️ **CLI-First Ops:** Deploy, benchmark, and audit costs with a single command.
 - 🤖 **OpenAI Compatible:** Drop-in replacement for any OpenAI-client.
 
@@ -85,7 +85,7 @@ graph TD
 
 ## 🔥 Professional Hardware Support
 - **NVIDIA G5:** High-throughput CUDA inference via vLLM.
-- **AWS Inferentia2:** The most cost-efficient inference on the planet. Recommended baseline: **`inf2.8xlarge`** (128GB RAM) for rock-solid stability. `inf2.xlarge` is supported for experimental economy configurations.
+- **AWS Inferentia2:** Experimental and workload-dependent. It can be a good fit to benchmark, but it is not universally cheaper than NVIDIA G instances. `inf2.xlarge` is supported for experimental economy configurations, and CUDA/G5 remains the recommended first path.
 - **ASG Warm Pools:** Supported for the `balanced` mode to keep prepared capacity available.
 - **Spot vs On-Demand:** `economy` and `balanced` use Spot instances; `always-on` uses on-demand instances.
 

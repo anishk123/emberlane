@@ -4,7 +4,7 @@ The Emberlane Inf2 Runtime Pack turns an AWS Inf2 EC2 instance into a wakeable O
 
 ## Why Inf2/Neuron
 
-Inf2 instances provide AWS Inferentia accelerators. Neuron can be cost-effective for steady or warm-pooled inference, but it adds operational complexity: driver/runtime versions, model support, compilation, cache management, and longer first-boot paths.
+Inf2 instances provide AWS Inferentia accelerators. They can be cost-effective for some steady or warm-pooled inference workloads, but they are not universally cheaper than NVIDIA G instances and they add operational complexity: driver/runtime versions, model support, compilation, cache management, and longer first-boot paths.
 
 Emberlane does not promise fixed wake times.
 
