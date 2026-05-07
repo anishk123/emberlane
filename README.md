@@ -121,15 +121,26 @@ MCP is the recommended integration path for agent clients. The HTTP/OpenAI-compa
 
 ## Architecture
 
-Emberlane is intentionally simple:
+Emberlane is intentionally simple. Local requests stay local; AWS requests go through Lambda WakeBridge and the ALB before they reach the ASG runtime.
 
 ```mermaid
 graph TD
-    Client([Client or Agent]) --> CLI[CLI / MCP / HTTP]
-    CLI --> Router[Emberlane Router]
-    Router --> Local[Local Echo or Ollama]
-    Router --> AWS[AWS WakeBridge + ASG]
-    Router --> Storage[Local or S3 File Storage]
+    Client([Client or Agent]) --> Interface[CLI / MCP / HTTP]
+
+    subgraph LocalMachine["Local machine"]
+        Interface --> Router[Emberlane router]
+        Router --> LocalRuntime[Echo or Ollama runtime]
+        Router --> LocalFiles[Local file storage]
+    end
+
+    subgraph AwsPath["AWS path"]
+        Router --> Lambda[Lambda WakeBridge]
+        Lambda --> ALB[Application Load Balancer]
+        ALB --> ASG[EC2 Auto Scaling Group]
+        ASG --> AwsRuntime[OpenAI-compatible runtime]
+        Router --> S3[S3 artifact storage]
+        AwsRuntime --> S3
+    end
 ```
 
 AWS is the first implemented hyperscaler backend. GCP and Azure are planned for later.
