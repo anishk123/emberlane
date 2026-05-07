@@ -646,7 +646,7 @@ async fn run_aws_command(
                     .default(
                         p_list
                             .iter()
-                            .position(|(name, _)| name == "llama31_8b")
+                            .position(|(name, _)| name == "qwen35_9b")
                             .unwrap_or(0),
                     )
                     .interact()

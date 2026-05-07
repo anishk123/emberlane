@@ -78,13 +78,15 @@ Use `--keep-on-failure` only for debugging. Otherwise diagnostics are collected 
 
 ```sh
 cargo run -- test aws \
-  --models llama31_8b,qwen25_7b \
+  --models qwen35_9b,qwen25_7b \
   --accelerator cuda \
-  --instance g5.xlarge \
+  --instance g5.2xlarge \
   --mode economy \
   --destroy \
   --yes-i-understand-this-creates-aws-resources
 ```
+
+The default CUDA path now starts from `qwen35_9b` on `g5.2xlarge`.
 
 ## Matrix
 

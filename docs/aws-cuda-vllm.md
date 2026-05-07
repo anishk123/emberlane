@@ -5,7 +5,7 @@ CUDA/G5 is the recommended first AWS path for Emberlane.
 Use:
 
 ```sh
-cargo run -- aws deploy --model llama31_8b --accelerator cuda --instance g5.xlarge --mode economy
+cargo run -- aws deploy --model qwen35_9b --accelerator cuda --instance g5.2xlarge --mode balanced
 ```
 
 The Terraform pack renders:

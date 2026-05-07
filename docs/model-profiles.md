@@ -16,3 +16,9 @@ Status values:
 Profiles map a friendly name to model ID, default accelerator, recommended instance, runtime, status, and max model length.
 
 Emberlane does not claim a model is validated unless the repo includes a real validation record.
+
+Current default CUDA first path:
+
+- `qwen35_9b` on `g5.2xlarge`
+- Model ID: `Qwen/Qwen3.5-9B-Instruct`
+- Runtime: `vllm-cuda`

@@ -92,7 +92,7 @@ terraform version
 If you only want to render the generated variables first, add `--plan-only`:
 
 ```sh
-cargo run -- aws deploy --profile emberlane --model llama31_8b --accelerator cuda --instance g5.xlarge --mode balanced --plan-only
+cargo run -- aws deploy --profile emberlane --model qwen35_9b --accelerator cuda --instance g5.2xlarge --mode balanced --plan-only
 ```
 
 ## Pick An AMI

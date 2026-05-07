@@ -36,10 +36,10 @@ fn cloud_provider_parses_and_future_clouds_are_not_implemented() {
 #[test]
 fn model_profiles_parse_and_include_cuda_first_profiles() {
     let profiles = profiles::all_profiles().unwrap();
-    let llama = profiles.get("llama31_8b").unwrap();
-    assert_eq!(llama.default_accelerator, "cuda");
-    assert_eq!(llama.recommended_instance, "g5.2xlarge");
-    assert_eq!(llama.status, "recommended");
+    let qwen = profiles.get("qwen35_9b").unwrap();
+    assert_eq!(qwen.default_accelerator, "cuda");
+    assert_eq!(qwen.recommended_instance, "g5.2xlarge");
+    assert_eq!(qwen.status, "recommended");
     assert_eq!(profiles.get("llama32_1b_inf2").unwrap().status, "stable");
 }
 
@@ -76,18 +76,18 @@ async fn aws_backend_renders_cuda_and_inf2_tfvars() {
     let cuda = AwsBackend::load_or_default(Some(PathBuf::from("missing.toml")))
         .unwrap()
         .with_overrides(
-            Some("llama31_8b".to_string()),
+            Some("qwen35_9b".to_string()),
             Some("cuda".to_string()),
             Some("g5.2xlarge".to_string()),
-            Some("economy".to_string()),
+            Some("balanced".to_string()),
             None,
         )
         .unwrap();
     let vars = cuda.render_deploy_vars().await.unwrap();
     assert_eq!(vars["accelerator"], "cuda");
     assert_eq!(vars["runtime_pack"], "cuda-vllm");
-    assert_eq!(vars["enable_warm_pool"], false);
-    assert_eq!(vars["model_id"], "meta-llama/Llama-3.1-8B-Instruct");
+    assert_eq!(vars["enable_warm_pool"], true);
+    assert_eq!(vars["model_id"], "Qwen/Qwen3.5-9B-Instruct");
 
     let inf2 = AwsBackend::load_or_default(Some(PathBuf::from("missing.toml")))
         .unwrap()
@@ -110,7 +110,7 @@ async fn aws_backend_renders_direct_deploy_profile_region_and_ami() {
     let mut backend = AwsBackend::load_or_default(Some(PathBuf::from("missing.toml")))
         .unwrap()
         .with_overrides(
-            Some("llama31_8b".to_string()),
+            Some("qwen35_9b".to_string()),
             Some("cuda".to_string()),
             Some("g5.2xlarge".to_string()),
             Some("balanced".to_string()),
@@ -163,8 +163,8 @@ async fn aws_backend_doctor_and_cost_report_are_honest() {
 fn aws_init_config_text_is_cuda_first() {
     let text = AwsBackend::default_config_text().unwrap();
     assert!(text.contains("accelerator = \"cuda\""));
-    assert!(text.contains("instance_type = \"g5.xlarge\""));
-    assert!(text.contains("model_profile = \"llama31_8b\""));
+    assert!(text.contains("instance_type = \"g5.2xlarge\""));
+    assert!(text.contains("model_profile = \"qwen35_9b\""));
     assert!(text.contains("mode = \"balanced\""));
 }
 

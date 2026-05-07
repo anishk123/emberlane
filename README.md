@@ -12,7 +12,7 @@
 ---
 
 ## 🚀 The Mission
-Running a `g5.xlarge` 24/7 costs **~$730/month**. Emberlane slashes that to under **$10/month** by automating the entire "Scale-to-Zero" lifecycle. 
+Running a `g5.2xlarge` 24/7 costs **roughly hundreds of dollars per month** depending on region and pricing model. Emberlane reduces idle cost by automating the entire "Scale-to-Zero" lifecycle. 
 
 1. **Request Hits:** Your secure gateway wakes the hardware.
 2. **AI Responds:** Requests are proxied instantly to vLLM.
@@ -36,11 +36,12 @@ Deploy your own private, secure endpoint in minutes:
 cargo run -- aws init --profile your-profile
 
 # 2. Deploy your chosen model
-# Run without --model for interactive selection!
+# Run without --model for interactive selection.
+# Default first path: Qwen 3.5 9B on g5.2xlarge.
 cargo run -- aws deploy --mode balanced --profile your-profile
 
 # Or specify a model directly:
-cargo run -- aws deploy --model qwen25_7b --mode balanced --profile your-profile
+cargo run -- aws deploy --model qwen35_9b --mode balanced --profile your-profile
 
 # 3. Chat with your live cloud hardware!
 cargo run -- aws chat "Why is Emberlane so cool?"
@@ -84,7 +85,7 @@ graph TD
 ---
 
 ## 🔥 Professional Hardware Support
-- **NVIDIA G5:** High-throughput CUDA inference via vLLM.
+- **NVIDIA G5:** The default first CUDA path. Qwen 3.5 9B on `g5.2xlarge` is the recommended starting point.
 - **AWS Inferentia2:** Experimental and workload-dependent. It can be a good fit to benchmark, but it is not universally cheaper than NVIDIA G instances. `inf2.xlarge` is supported for experimental economy configurations, and CUDA/G5 remains the recommended first path.
 - **ASG Warm Pools:** Supported for the `balanced` mode to keep prepared capacity available.
 - **Spot vs On-Demand:** `economy` and `balanced` use Spot instances; `always-on` uses on-demand instances.

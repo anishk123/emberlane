@@ -18,10 +18,10 @@ public_alb                  = true
 
 accelerator         = "cuda"
 runtime_pack        = "cuda-vllm"
-instance_type       = "g5.xlarge"
-model_profile       = "llama31_8b"
-model_id            = "meta-llama/Llama-3.1-8B-Instruct"
-mode                = "economy"
+instance_type       = "g5.2xlarge"
+model_profile       = "qwen35_9b"
+model_id            = "Qwen/Qwen3.5-9B-Instruct"
+mode                = "balanced"
 runtime_port        = 8080
 root_volume_size_gb = 200
 use_baked_ami       = false

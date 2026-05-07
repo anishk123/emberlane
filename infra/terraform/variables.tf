@@ -91,7 +91,7 @@ variable "require_alb_secret" {
 variable "instance_type" {
   description = "AWS instance type for the runtime ASG."
   type        = string
-  default     = "g5.xlarge"
+  default     = "g5.2xlarge"
 }
 
 variable "ami_id" {
@@ -109,7 +109,7 @@ variable "key_name" {
 variable "model_profile" {
   description = "Emberlane model profile from profiles/models.toml."
   type        = string
-  default     = "llama31_8b"
+  default     = "qwen35_9b"
 }
 
 variable "model_id" {
