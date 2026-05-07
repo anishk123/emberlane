@@ -1,6 +1,8 @@
 # Emberlane
 
-Your own OpenAI-compatible AI endpoint. Run locally with Ollama or deploy to AWS with scale-to-zero.
+Your own OpenAI-compatible AI endpoint with cloud scale-to-zero inference.
+
+Run locally with Ollama, or deploy model profiles to AWS when you want the cloud to wake up only on demand.
 
 [![CI](https://github.com/anishk123/emberlane/actions/workflows/ci.yml/badge.svg)](https://github.com/anishk123/emberlane/actions)
 ![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)
@@ -9,16 +11,27 @@ Your own OpenAI-compatible AI endpoint. Run locally with Ollama or deploy to AWS
 ![AWS](https://img.shields.io/badge/AWS-supported-FF9900)
 ![Inferentia2](https://img.shields.io/badge/Inf2-experimental-blueviolet)
 
+## At A Glance
+
+| | |
+| --- | --- |
+| ☁️ **Cloud scale-to-zero** | Run your own OpenAI-compatible endpoint on AWS and only pay when a model is awake. |
+| 🏠 **Local first** | Use Ollama or the built-in echo runtime for fast, offline, repeatable work. |
+| 📦 **Model profiles** | Start with sensible defaults, then override the model, mode, or infrastructure when needed. |
+| 🔌 **CLI / MCP / HTTP** | Deploy, automate, and integrate through the interface that fits the job. |
+
+Emberlane is for the “I want my own endpoint” use case: a single shipped binary that keeps local iteration simple and cloud inference honest.
+
 ## What Emberlane Does
 
-Emberlane is a local-first LLM gateway with one shipped CLI binary. It can:
+Emberlane ships as one CLI binary and can:
 
-- run local chat with the built-in echo runtime
-- run local chat with Ollama
-- upload text files and ask questions about one or more documents
-- expose MCP tools for agent clients
-- serve an HTTP and OpenAI-compatible API
-- deploy an AWS scale-to-zero stack with Terraform
+- 💬 run local chat with the built-in echo runtime
+- 🦙 run local chat with Ollama
+- 📄 upload text files and ask questions about one or more documents
+- 🧠 expose MCP tools for agent clients
+- 🌐 serve an HTTP and OpenAI-compatible API
+- ☁️ deploy an AWS scale-to-zero stack with Terraform
 
 ## How Defaults Work
 
@@ -41,10 +54,10 @@ If you want to compare multiple models, deploy one profile at a time and use `aw
 
 ## Supported Interfaces
 
-- CLI for local setup, AWS deploy, benchmarking, cost reports, diagnostics, and cleanup
-- MCP stdio for agent/tool integration
-- HTTP API for apps and internal services
-- OpenAI-compatible chat endpoints for existing clients
+- 🖥️ CLI for local setup, AWS deploy, benchmarking, cost reports, diagnostics, and cleanup
+- 🤖 MCP stdio for agent/tool integration
+- 🌐 HTTP API for apps and internal services
+- 🧩 OpenAI-compatible chat endpoints for existing clients
 
 ## Local Quickstart
 
@@ -77,6 +90,23 @@ cargo run -- aws destroy --profile your-profile
 ```
 
 If you want a guided deploy path, Emberlane renders Terraform variables, applies the stack, and stores the resolved endpoint in `aws/emberlane.aws.toml`.
+
+## Multi-Model Workflow
+
+Emberlane is designed so you can keep the defaults simple and still compare several models over time.
+
+- Start with one default model profile.
+- Deploy another profile when you want to compare behavior or cost.
+- Keep inactive models scaled down or destroyed so you only pay for what is actually up.
+- Use `aws benchmark` and `aws cost-report` to make the tradeoffs visible instead of guessing.
+
+Example:
+
+```sh
+cargo run -- aws deploy --profile your-profile --model qwen35_9b --mode balanced
+cargo run -- aws deploy --profile your-profile --model llama31_8b --mode economy
+cargo run -- aws benchmark --profile your-profile
+```
 
 ## AWS Terraform Deployment
 
