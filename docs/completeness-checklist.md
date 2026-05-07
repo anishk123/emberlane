@@ -29,7 +29,6 @@ This checklist describes what is supported in the public alpha and what is inten
 - GCP backend.
 - Azure backend.
 - Production UI.
-- Full RAG.
 - Managed hosted service.
 
 ## Notes

@@ -10,7 +10,7 @@ Emberlane is scoped to:
 - MCP stdio for core tools
 - AWS deploy/chat/benchmark/cost-report/destroy
 
-Unfinished RAG, search, workflow, plugin, dashboard, SDK, and multi-cloud examples should not be presented as working Emberlane features. Those belong outside the core gateway until they are real, central, and tested.
+Unfinished search, workflow, plugin, dashboard, SDK, and multi-cloud examples should not be presented as working Emberlane features. Those belong outside the core gateway until they are real, central, and tested.
 
 Useful future ideas live in `docs/roadmap/future-work.md`.
 

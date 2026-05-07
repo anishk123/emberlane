@@ -25,7 +25,6 @@ Possible future mappings:
 
 ## Ideas Not In Core Today
 
-- RAG worker examples.
 - Search worker examples.
 - Plugin provider systems.
 - Dashboards.

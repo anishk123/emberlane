@@ -2,7 +2,6 @@
 
 These ideas are intentionally not active Emberlane features:
 
-- RAG worker examples.
 - Search worker examples.
 - File parsing workers beyond simple `.txt`/`.md` context.
 - Plugin provider systems.

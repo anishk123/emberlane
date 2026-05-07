@@ -226,6 +226,5 @@ mod tests {
         assert!(!text.contains("emberlane_route"));
         assert!(!text.contains("search"));
         assert!(!text.contains("index"));
-        assert!(!text.contains("rag"));
     }
 }

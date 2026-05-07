@@ -167,7 +167,6 @@ AWS is the first implemented hyperscaler backend. GCP and Azure are planned for 
 
 ## Not Implemented Yet
 
-- full RAG
 - managed hosted service
 - production multi-tenant auth
 - dashboards
