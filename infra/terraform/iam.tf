@@ -96,9 +96,11 @@ resource "aws_iam_instance_profile" "runtime_instance" {
   role = aws_iam_role.runtime_instance.name
 }
 
-resource "aws_iam_service_linked_role" "ssm" {
-  aws_service_name = "ssm.amazonaws.com"
-}
+# Service linked role for SSM is often pre-created in the account.
+# Commenting out to avoid "Already Exists" conflicts.
+# resource "aws_iam_service_linked_role" "ssm" {
+#   aws_service_name = "ssm.amazonaws.com"
+# }
 
 data "aws_iam_policy_document" "lambda_assume_role" {
   statement {

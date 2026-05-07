@@ -27,7 +27,7 @@ case "$OS_ID" in
         if ! command -v docker >/dev/null 2>&1; then
             deps+=(docker.io)
         fi
-        apt-get install -y "${deps[@]}" || true # Don't fail if some deps (like docker) are held/pre-installed
+        apt-get install -y "$${deps[@]}" || true # Don't fail if some deps (like docker) are held/pre-installed
         systemctl enable --now docker
         ;;
     amzn|al2023)
@@ -36,7 +36,7 @@ case "$OS_ID" in
         if ! command -v docker >/dev/null 2>&1; then
             deps+=(docker)
         fi
-        dnf install -y "${deps[@]}" 
+        dnf install -y "$${deps[@]}" 
         systemctl enable --now docker
         ;;
     *)
