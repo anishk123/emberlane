@@ -144,9 +144,17 @@ impl RuntimeRouter {
     pub async fn route(
         &self,
         runtime_id: &str,
-        request: RouteRequest,
+        mut request: RouteRequest,
     ) -> Result<RouteResponse, EmberlaneError> {
         let runtime = self.runtime(runtime_id)?;
+
+        // Inject API Key if configured
+        if let Some(key) = self.cfg.api_key() {
+            if !request.headers.iter().any(|(k, _)| k.to_lowercase() == "authorization") {
+                request.headers.insert("Authorization".to_string(), format!("Bearer {}", key));
+            }
+        }
+
         self.ensure_ready(&runtime).await?;
         self.with_concurrency(&runtime, request).await
     }

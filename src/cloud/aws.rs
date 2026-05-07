@@ -365,34 +365,35 @@ impl AwsBackend {
     }
 
     async fn endpoint(&self) -> Result<String, EmberlaneError> {
-        if let Some(url) = &self.endpoint_url {
-            return Ok(url.trim_end_matches('/').to_string());
-        }
-        if let Ok(url) = std::env::var("EMBERLANE_AWS_ENDPOINT") {
-            if !url.trim().is_empty() {
-                return Ok(url.trim_end_matches('/').to_string());
-            }
-        }
-        let output = Command::new("terraform")
-            .args(["output", "-raw", "lambda_function_url"])
-            .current_dir(&self.config.terraform_dir)
-            .output()
-            .await
-            .map_err(|_| {
-                EmberlaneError::ProviderNotConfigured(
-                    "AWS endpoint is not configured. Set deploy.endpoint_url, EMBERLANE_AWS_ENDPOINT, or run Terraform first.".to_string(),
-                )
-            })?;
-        if output.status.success() {
-            Ok(String::from_utf8_lossy(&output.stdout)
-                .trim()
-                .trim_end_matches('/')
-                .to_string())
+        let url = if let Some(url) = &self.endpoint_url {
+            url.clone()
+        } else if let Ok(url) = std::env::var("EMBERLANE_AWS_ENDPOINT") {
+            url
         } else {
-            Err(EmberlaneError::ProviderNotConfigured(
-                "failed to read Terraform lambda_function_url output".to_string(),
-            ))
+            let output = Command::new("terraform")
+                .args(["output", "-raw", "lambda_function_url"])
+                .current_dir(&self.config.terraform_dir)
+                .output()
+                .await
+                .map_err(|_| {
+                    EmberlaneError::ProviderNotConfigured(
+                        "AWS endpoint is not configured. Run terraform apply first.".to_string(),
+                    )
+                })?;
+            if output.status.success() {
+                String::from_utf8_lossy(&output.stdout).to_string()
+            } else {
+                return Err(EmberlaneError::ProviderNotConfigured(
+                    "failed to read Terraform lambda_function_url output".to_string(),
+                ));
+            }
+        };
+
+        let cleaned = url.trim().trim_matches('"').trim_end_matches('/').to_string();
+        if cleaned.is_empty() {
+            return Err(EmberlaneError::ProviderNotConfigured("AWS endpoint URL is empty".to_string()));
         }
+        Ok(cleaned)
     }
 
     pub async fn endpoint_url(&self) -> Result<String, EmberlaneError> {

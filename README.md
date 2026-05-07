@@ -2,17 +2,17 @@
 
 Your own OpenAI-compatible AI endpoint. Run locally with Ollama or deploy to AWS with scale-to-zero.
 
-![CI](https://github.com/emberlane/emberlane/actions/workflows/ci.yml/badge.svg)
+[![CI](https://github.com/anishk123/emberlane/actions/workflows/ci.yml/badge.svg)](https://github.com/anishk123/emberlane/actions)
 ![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)
 ![Rust](https://img.shields.io/badge/rust-1.75%2B-orange)
 ![Terraform](https://img.shields.io/badge/terraform-validated-623CE4)
 ![AWS](https://img.shields.io/badge/AWS-supported-FF9900)
-![Local Ollama](https://img.shields.io/badge/local-Ollama-green)
+![Inferentia2](https://img.shields.io/badge/Inf2-optimized-blueviolet)
 ![Status](https://img.shields.io/badge/status-alpha-yellow)
 
-Emberlane is a local-first OSS LLM gateway. It keeps a small gateway available, wakes the target runtime when a request arrives, and proxies the original chat or file-chat request.
+Emberlane is a Scale-to-Zero LLM Gateway. It allows you to deploy high-performance hardware (NVIDIA/Inferentia) on-demand, wakes the target runtime when a request arrives, and automatically scales back to zero when idle to save costs.
 
-This repository is a public alpha: useful for local development and AWS dev/test deployments, but not production multi-tenant infrastructure.
+This repository is a public alpha: specialized for AWS dev/test deployments where cost-efficiency and security are primary goals.
 
 Supported interfaces in this release:
 
@@ -24,12 +24,11 @@ AWS is the first implemented cloud backend. Google Cloud and Azure are future ba
 
 ## What Emberlane Does
 
-- Runs locally with Ollama or the deterministic echo runtime.
-- Exposes a small HTTP API and OpenAI-compatible chat endpoint.
-- Supports MCP stdio tools for chat, upload, and chat-with-file.
-- Deploys AWS runtime infrastructure through Terraform.
-- Supports AWS scale-to-zero modes using ASG, optional Warm Pool, ALB, and Lambda WakeBridge.
-- Provides model profiles and cost modes so deployments are explicit and benchmarkable.
+- Automates AWS runtime infrastructure deployment via Terraform.
+- Implements specialized **Scale-to-Zero** controllers for G5 (NVIDIA) and Inf2 (Inferentia2) instances.
+- Secure **Secret Handshake** architecture using ALB and Lambda WakeBridge.
+- Integrated CLI for deployment, benchmarking, and real-time cost auditing.
+- Supports OpenAI-compatible chat and file-chat protocols.
 
 ## Why Emberlane?
 
@@ -69,29 +68,15 @@ Use the HTTP/OpenAI-compatible API for:
 - existing OpenAI-compatible clients
 - runtime and gateway integration
 
-## Local Quickstart
+## High-Performance Hardware
 
-```sh
-cargo run -- init
-cargo run -- serve
-```
+Emberlane targets professional-grade accelerators and is optimized for:
 
-In another terminal:
+- **NVIDIA G5 (g5.xlarge+):** Using `cuda-vllm` for standard high-throughput inference.
+- **AWS Inferentia2 (inf2.xlarge+):** Using `inf2-neuron` for the most cost-efficient inference path.
+- **Warm Pools:** Support for ASG Warm Pools to enable <30s wake times while maintaining scale-to-zero costs.
 
-```sh
-cargo run -- chat echo "hello"
-```
-
-For local Ollama:
-
-```sh
-ollama pull llama3.2:1b
-cargo run -- chat ollama "hello"
-```
-
-If Ollama is unavailable, Emberlane returns a helpful error: install Ollama, run `ollama serve`, and pull the configured model.
-
-## AWS Quickstart
+## AWS Deployment Quickstart
 
 This is the AWS Terraform deployment path for Emberlane. You can use the interactive CLI mode that securely handles token storage and model selection:
 
