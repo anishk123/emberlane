@@ -35,7 +35,11 @@ Deploy your own private, secure endpoint in minutes:
 # 1. Initialize your AWS environment
 cargo run -- aws init --profile your-profile
 
-# 2. Deploy your chosen model (e.g., Llama 3.1 or Qwen)
+# 2. Deploy your chosen model
+# Option A: Cheapest Guaranteed Stable (TinyLlama on g4dn.xlarge)
+cargo run -- aws deploy --model tiny_demo --mode economy
+
+# Option B: Pro-Grade Stable (Llama 3.1 8B on g5.2xlarge)
 cargo run -- aws deploy --model llama31_8b --mode economy
 
 # 3. Chat with your live cloud hardware!
