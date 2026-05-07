@@ -107,6 +107,10 @@ enum AwsCommand {
     Destroy {
         #[arg(long)]
         auto_approve: bool,
+        #[arg(long)]
+        profile: Option<String>,
+        #[arg(long)]
+        region: Option<String>,
     },
     Status {
         runtime_id: Option<String>,
@@ -644,9 +648,27 @@ async fn run_aws_command(
             }
             print_json(backend.deploy(cmd.auto_approve, cmd.plan_only).await?);
         }
-        AwsCommand::Destroy { auto_approve } => {
-            let backend = AwsBackend::load_or_default(None)?;
-            ensure_aws_authenticated(backend.config.profile.clone(), Some(backend.config.region.clone())).await?;
+        AwsCommand::Destroy {
+            auto_approve,
+            profile,
+            region,
+        } => {
+            let config_profile = profile.clone().or_else(|| {
+                AwsBackend::load_or_default(None).ok().and_then(|b| b.config.profile.clone())
+            });
+            let config_region = region.clone().unwrap_or_else(|| {
+                AwsBackend::load_or_default(None).map(|b| b.config.region).unwrap_or_else(|_| "us-west-2".to_string())
+            });
+
+            ensure_aws_authenticated(config_profile.clone(), Some(config_region.clone())).await?;
+
+            let mut backend = AwsBackend::load_or_default(None)?;
+            if let Some(profile) = profile {
+                backend.config.profile = Some(profile);
+            }
+            if let Some(region) = region {
+                backend.config.region = region;
+            }
             print_json(backend.destroy(auto_approve).await?);
         }
         AwsCommand::Chat { message } => {
