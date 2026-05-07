@@ -72,6 +72,18 @@ class LambdaBridgeTests(unittest.TestCase):
         self.assertEqual(response["statusCode"], 401)
         self.assertIn("auth_required", response["body"])
 
+    def test_x_api_key_is_accepted_when_api_key_is_set(self):
+        os.environ["API_KEY"] = "secret"
+        with patch.object(self.app, "_healthy", return_value=True), patch.object(
+            self.app, "_proxy", return_value={"statusCode": 200, "body": "{}"}
+        ) as proxy:
+            response = self.app.handler(
+                self.event(headers={"x-api-key": "secret"}),
+                None,
+            )
+        self.assertEqual(response["statusCode"], 200)
+        proxy.assert_called_once()
+
     def test_streaming_returns_v02_error(self):
         response = self.app.handler(self.event(body={"stream": True}), None)
         self.assertEqual(response["statusCode"], 400)

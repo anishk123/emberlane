@@ -164,3 +164,13 @@ resource "aws_iam_role_policy_attachment" "lambda_wakebridge" {
   role       = aws_iam_role.lambda_wakebridge[0].name
   policy_arn = aws_iam_policy.lambda_wakebridge[0].arn
 }
+
+resource "aws_lambda_permission" "allow_public_invoke" {
+  count = var.deploy_lambda_wakebridge ? 1 : 0
+
+  statement_id           = "AllowPublicInvokeFunctionUrl"
+  action                 = "lambda:InvokeFunctionUrl"
+  function_name          = aws_lambda_function.wakebridge[0].function_name
+  principal              = "*"
+  function_url_auth_type = "NONE"
+}

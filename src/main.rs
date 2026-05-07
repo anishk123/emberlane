@@ -615,10 +615,14 @@ async fn run_aws_command(
         }
         AwsCommand::Deploy(cmd) => {
             let config_profile = cmd.profile.clone().or_else(|| {
-                AwsBackend::load_or_default(None).ok().and_then(|b| b.config.profile.clone())
+                AwsBackend::load_or_default(None)
+                    .ok()
+                    .and_then(|b| b.config.profile.clone())
             });
             let config_region = cmd.region.clone().unwrap_or_else(|| {
-                AwsBackend::load_or_default(None).map(|b| b.config.region).unwrap_or_else(|_| "us-west-2".to_string())
+                AwsBackend::load_or_default(None)
+                    .map(|b| b.config.region)
+                    .unwrap_or_else(|_| "us-west-2".to_string())
             });
 
             ensure_aws_authenticated(config_profile.clone(), Some(config_region.clone())).await?;
@@ -630,7 +634,7 @@ async fn run_aws_command(
                 let profiles_res = profiles::all_profiles()?;
                 let mut p_list = profiles_res.into_iter().collect::<Vec<_>>();
                 p_list.sort_by_key(|(name, _)| name.clone());
-                
+
                 let prompts: Vec<String> = p_list
                     .iter()
                     .map(|(name, p)| format!("{} ({})", p.display_name, name))
@@ -639,18 +643,23 @@ async fn run_aws_command(
                 let selection = dialoguer::Select::new()
                     .with_prompt("Select a model to deploy")
                     .items(&prompts)
-                    .default(p_list.iter().position(|(name, _)| name == "llama31_8b").unwrap_or(0))
+                    .default(
+                        p_list
+                            .iter()
+                            .position(|(name, _)| name == "llama31_8b")
+                            .unwrap_or(0),
+                    )
                     .interact()
                     .map_err(|e| EmberlaneError::Internal(e.to_string()))?;
-                
+
                 let selected_name = p_list[selection].0.clone();
                 let selected_id = p_list[selection].1.model_id.clone();
                 model = Some(selected_name);
 
-                let is_gated = selected_id.starts_with("meta-llama/") ||
-                    selected_id.starts_with("google/gemma-") ||
-                    selected_id.starts_with("mistralai/Mistral-") ||
-                    selected_id.starts_with("mistralai/Mixtral-");
+                let is_gated = selected_id.starts_with("meta-llama/")
+                    || selected_id.starts_with("google/gemma-")
+                    || selected_id.starts_with("mistralai/Mistral-")
+                    || selected_id.starts_with("mistralai/Mixtral-");
 
                 if is_gated && hf_token.is_none() {
                     let entered_token: String = dialoguer::Password::new()
@@ -687,10 +696,14 @@ async fn run_aws_command(
             region,
         } => {
             let config_profile = profile.clone().or_else(|| {
-                AwsBackend::load_or_default(None).ok().and_then(|b| b.config.profile.clone())
+                AwsBackend::load_or_default(None)
+                    .ok()
+                    .and_then(|b| b.config.profile.clone())
             });
             let config_region = region.clone().unwrap_or_else(|| {
-                AwsBackend::load_or_default(None).map(|b| b.config.region).unwrap_or_else(|_| "us-west-2".to_string())
+                AwsBackend::load_or_default(None)
+                    .map(|b| b.config.region)
+                    .unwrap_or_else(|_| "us-west-2".to_string())
             });
 
             ensure_aws_authenticated(config_profile.clone(), Some(config_region.clone())).await?;
@@ -704,7 +717,11 @@ async fn run_aws_command(
             }
             print_json(backend.destroy(auto_approve).await?);
         }
-        AwsCommand::Chat { message, profile, region } => {
+        AwsCommand::Chat {
+            message,
+            profile,
+            region,
+        } => {
             let mut backend = AwsBackend::load_or_default(None)?;
             if let Some(profile) = profile {
                 backend.config.profile = Some(profile);
@@ -765,7 +782,11 @@ async fn run_aws_command(
                 .ok_or_else(|| EmberlaneError::RuntimeNotFound(runtime_id.clone()))?;
             print_json(render_aws_iam_policy(&runtime)?);
         }
-        AwsCommand::Status { runtime_id, profile, region } => {
+        AwsCommand::Status {
+            runtime_id,
+            profile,
+            region,
+        } => {
             if let Some(runtime_id) = runtime_id {
                 let router = local_router(config)?;
                 print_json(router.aws_status(&runtime_id).await?);
@@ -851,10 +872,13 @@ async fn run_aws_command(
             if let Some(profile) = profile {
                 cmd.arg("--profile").arg(profile);
             }
-            let status = cmd.status().await
-                .map_err(|e| EmberlaneError::Internal(format!("Failed to execute 'aws login': {}", e)))?;
+            let status = cmd.status().await.map_err(|e| {
+                EmberlaneError::Internal(format!("Failed to execute 'aws login': {}", e))
+            })?;
             if !status.success() {
-                return Err(EmberlaneError::ProviderNotConfigured("AWS login failed.".to_string()));
+                return Err(EmberlaneError::ProviderNotConfigured(
+                    "AWS login failed.".to_string(),
+                ));
             }
             println!("[emberlane] AWS login successful!");
         }
@@ -862,21 +886,26 @@ async fn run_aws_command(
     Ok(())
 }
 
-async fn ensure_aws_authenticated(profile: Option<String>, region: Option<String>) -> Result<(), EmberlaneError> {
+async fn ensure_aws_authenticated(
+    profile: Option<String>,
+    region: Option<String>,
+) -> Result<(), EmberlaneError> {
     let sts = test_harness::check_aws_credentials(profile.clone(), region.clone()).await?;
     if sts["ok"].as_bool() == Some(true) {
         return Ok(());
     }
 
     println!("[emberlane] AWS credentials expired or missing. Attempting login...");
-    
+
     let profile_arg = profile.clone().unwrap_or_else(|| "default".to_string());
-    
+
     // Try 'aws login' first (as discovered on this system)
     let mut cmd = tokio::process::Command::new("aws");
     cmd.args(["login", "--profile", &profile_arg]);
-    
-    let status = cmd.status().await
+
+    let status = cmd
+        .status()
+        .await
         .map_err(|e| EmberlaneError::Internal(format!("Failed to run 'aws login': {}", e)))?;
 
     if status.success() {
@@ -888,8 +917,10 @@ async fn ensure_aws_authenticated(profile: Option<String>, region: Option<String
     println!("[emberlane] 'aws login' failed. Trying 'aws sso login'...");
     let mut sso_cmd = tokio::process::Command::new("aws");
     sso_cmd.args(["sso", "login", "--profile", &profile_arg]);
-    
-    let output = sso_cmd.output().await
+
+    let output = sso_cmd
+        .output()
+        .await
         .map_err(|e| EmberlaneError::Internal(format!("Failed to run 'aws sso login': {}", e)))?;
 
     if output.status.success() {
@@ -899,14 +930,17 @@ async fn ensure_aws_authenticated(profile: Option<String>, region: Option<String
 
     let stderr = String::from_utf8_lossy(&output.stderr);
     if stderr.contains("Missing the following required SSO configuration values") {
-        println!("\n[emberlane] It looks like your AWS profile '{}' is not fully configured for SSO.", profile_arg);
+        println!(
+            "\n[emberlane] It looks like your AWS profile '{}' is not fully configured for SSO.",
+            profile_arg
+        );
         println!("[emberlane] Please enter your SSO configuration one time:");
-        
+
         let start_url: String = dialoguer::Input::new()
             .with_prompt("SSO Start URL (e.g., https://my-company.awsapps.com/start)")
             .interact()
             .map_err(|e| EmberlaneError::Internal(e.to_string()))?;
-            
+
         let sso_region: String = dialoguer::Input::new()
             .with_prompt("SSO Region (e.g., us-west-2)")
             .default("us-west-2".to_string())
@@ -916,19 +950,43 @@ async fn ensure_aws_authenticated(profile: Option<String>, region: Option<String
         // Configure the profile
         println!("[emberlane] Configuring AWS profile '{}'...", profile_arg);
         tokio::process::Command::new("aws")
-            .args(["configure", "set", "sso_start_url", &start_url, "--profile", &profile_arg])
-            .status().await.ok();
+            .args([
+                "configure",
+                "set",
+                "sso_start_url",
+                &start_url,
+                "--profile",
+                &profile_arg,
+            ])
+            .status()
+            .await
+            .ok();
         tokio::process::Command::new("aws")
-            .args(["configure", "set", "sso_region", &sso_region, "--profile", &profile_arg])
-            .status().await.ok();
-            
+            .args([
+                "configure",
+                "set",
+                "sso_region",
+                &sso_region,
+                "--profile",
+                &profile_arg,
+            ])
+            .status()
+            .await
+            .ok();
+
         // Try login again
         println!("[emberlane] Retrying login...");
         let status = tokio::process::Command::new("aws")
             .args(["sso", "login", "--profile", &profile_arg])
-            .status().await
-            .map_err(|e| EmberlaneError::Internal(format!("Failed to run 'aws sso login' after config: {}", e)))?;
-            
+            .status()
+            .await
+            .map_err(|e| {
+                EmberlaneError::Internal(format!(
+                    "Failed to run 'aws sso login' after config: {}",
+                    e
+                ))
+            })?;
+
         if status.success() {
             println!("[emberlane] AWS login successful!");
             return Ok(());
@@ -936,7 +994,7 @@ async fn ensure_aws_authenticated(profile: Option<String>, region: Option<String
     }
 
     Err(EmberlaneError::ProviderNotConfigured(format!(
-        "AWS login failed. Status code: {}. Stderr: {}", 
+        "AWS login failed. Status code: {}. Stderr: {}",
         output.status.code().unwrap_or(1),
         stderr
     )))

@@ -24,6 +24,7 @@ It is intentionally Terraform, not CDK, and focuses only on the AWS deployment p
 - Auto Scaling Group with desired capacity initially `0`.
 - Optional ASG Warm Pool.
 - Lambda Function URL running the Node WakeBridge for response streaming where supported.
+- Optional ALB header gate for extra friction in dev/test; disabled by default.
 
 No NAT Gateway is created by default to avoid surprise cost.
 
@@ -51,6 +52,7 @@ Emberlane auto-selects a sensible AMI for the chosen accelerator when you run `c
 - The ALB is public by default for a simple dev/test Lambda Function URL path.
 - `allowed_ingress_cidr_blocks = ["0.0.0.0/0"]` is dev-only. A non-VPC Lambda Function URL does not have a stable customer-controlled source IP, so tightening ALB ingress requires a different networking/gateway plan.
 - Lambda Function URL auth defaults to `NONE`; set `api_key`.
+- The ALB header gate is optional. Emberlane can run without `X-Emberlane-Secret` by default to keep the public dev path easy to use.
 - ASG `desired_capacity` is ignored by Terraform lifecycle so Emberlane/Lambda can wake and sleep the group without Terraform fighting it.
 - Warm Pool is enabled by default, but it does not guarantee fixed wake latency.
 

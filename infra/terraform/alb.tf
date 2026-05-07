@@ -34,6 +34,7 @@ resource "aws_lb_target_group" "runtime" {
 }
 
 resource "random_password" "alb_secret" {
+  count   = var.require_alb_secret ? 1 : 0
   length  = 32
   special = false
 }
@@ -44,11 +45,17 @@ resource "aws_lb_listener" "http" {
   protocol          = "HTTP"
 
   default_action {
-    type = "fixed-response"
-    fixed_response {
-      content_type = "text/plain"
-      message_body = "Access Denied"
-      status_code  = "403"
+    type             = var.require_alb_secret ? "fixed-response" : "forward"
+    target_group_arn = var.require_alb_secret ? null : aws_lb_target_group.runtime.arn
+
+    dynamic "fixed_response" {
+      for_each = var.require_alb_secret ? [1] : []
+
+      content {
+        content_type = "text/plain"
+        message_body = "Access Denied"
+        status_code  = "403"
+      }
     }
   }
 
@@ -72,6 +79,7 @@ resource "aws_lb_listener_rule" "allow_health" {
 }
 
 resource "aws_lb_listener_rule" "allow_secret" {
+  count        = var.require_alb_secret ? 1 : 0
   listener_arn = aws_lb_listener.http.arn
   priority     = 10
 
@@ -83,7 +91,7 @@ resource "aws_lb_listener_rule" "allow_secret" {
   condition {
     http_header {
       http_header_name = "X-Emberlane-Secret"
-      values           = [random_password.alb_secret.result]
+      values           = [random_password.alb_secret[0].result]
     }
   }
 }

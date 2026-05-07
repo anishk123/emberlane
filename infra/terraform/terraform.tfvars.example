@@ -38,6 +38,7 @@ wake_mode                = "fast"
 fast_wait_secs           = 25
 startup_timeout_secs     = 300
 retry_after_secs         = 5
+require_alb_secret       = false
 
 # Strongly recommended if function_url_auth_type = "NONE".
 api_key = "replace-with-a-long-random-token"

@@ -64,8 +64,10 @@ def _auth_error(event):
     api_key = os.environ.get("API_KEY", "")
     if not api_key:
         return None
-    got = _headers(event).get("authorization", "")
-    if got == f"Bearer {api_key}":
+    headers = _headers(event)
+    got_auth = headers.get("authorization", "")
+    got_api_key = headers.get("x-api-key", "")
+    if got_auth == f"Bearer {api_key}" or got_api_key == api_key:
         return None
     return _json_response(
         401,

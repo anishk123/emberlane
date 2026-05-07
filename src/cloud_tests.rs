@@ -38,12 +38,9 @@ fn model_profiles_parse_and_include_cuda_first_profiles() {
     let profiles = profiles::all_profiles().unwrap();
     let llama = profiles.get("llama31_8b").unwrap();
     assert_eq!(llama.default_accelerator, "cuda");
-    assert_eq!(llama.recommended_instance, "g5.xlarge");
+    assert_eq!(llama.recommended_instance, "g5.2xlarge");
     assert_eq!(llama.status, "recommended");
-    assert_eq!(
-        profiles.get("llama32_1b_inf2").unwrap().status,
-        "inf2_experimental"
-    );
+    assert_eq!(profiles.get("llama32_1b_inf2").unwrap().status, "stable");
 }
 
 #[test]
@@ -53,12 +50,24 @@ fn cost_modes_map_to_terraform_values() {
         false
     );
     assert_eq!(
+        CostMode::Economy.terraform_values()["use_spot_instances"],
+        true
+    );
+    assert_eq!(
         CostMode::Balanced.terraform_values()["enable_warm_pool"],
+        true
+    );
+    assert_eq!(
+        CostMode::Balanced.terraform_values()["use_spot_instances"],
         true
     );
     assert_eq!(
         CostMode::AlwaysOn.terraform_values()["asg_desired_capacity"],
         1
+    );
+    assert_eq!(
+        CostMode::AlwaysOn.terraform_values()["use_spot_instances"],
+        false
     );
 }
 
@@ -69,7 +78,7 @@ async fn aws_backend_renders_cuda_and_inf2_tfvars() {
         .with_overrides(
             Some("llama31_8b".to_string()),
             Some("cuda".to_string()),
-            Some("g5.xlarge".to_string()),
+            Some("g5.2xlarge".to_string()),
             Some("economy".to_string()),
             None,
         )
@@ -85,7 +94,7 @@ async fn aws_backend_renders_cuda_and_inf2_tfvars() {
         .with_overrides(
             Some("llama32_1b_inf2".to_string()),
             Some("inf2".to_string()),
-            Some("inf2.xlarge".to_string()),
+            Some("inf2.8xlarge".to_string()),
             Some("balanced".to_string()),
             None,
         )
@@ -103,7 +112,7 @@ async fn aws_backend_renders_direct_deploy_profile_region_and_ami() {
         .with_overrides(
             Some("llama31_8b".to_string()),
             Some("cuda".to_string()),
-            Some("g5.xlarge".to_string()),
+            Some("g5.2xlarge".to_string()),
             Some("balanced".to_string()),
             None,
         )
@@ -116,6 +125,7 @@ async fn aws_backend_renders_direct_deploy_profile_region_and_ami() {
     assert_eq!(vars["aws_region"], "us-west-2");
     assert_eq!(vars["ami_id"], "ami-1234567890abcdef0");
     assert_eq!(vars["enable_warm_pool"], true);
+    assert_eq!(vars["use_spot_instances"], true);
 }
 
 #[test]
@@ -134,7 +144,7 @@ async fn aws_backend_doctor_and_cost_report_are_honest() {
         .with_overrides(
             Some("llama32_1b_inf2".to_string()),
             Some("inf2".to_string()),
-            Some("g5.xlarge".to_string()),
+            Some("inf2.xlarge".to_string()),
             Some("always-on".to_string()),
             None,
         )
@@ -173,14 +183,19 @@ fn examples_and_readme_are_cleaned_to_active_surface() {
     for forbidden in ["plugin marketplace", "multi-agent", "workflow builder"] {
         assert!(!readme.to_lowercase().contains(forbidden));
     }
-    assert!(readme.contains("Local Quickstart"));
     assert!(readme.contains("AWS Quickstart"));
-    assert!(readme.contains("Model Choices"));
-    assert!(readme.contains("Cost Modes"));
-    assert!(readme.contains("Supported interfaces in this release"));
-    assert!(readme.contains("CLI for deployment and operations"));
-    assert!(readme.contains("MCP stdio for agent and developer-tool integration"));
-    assert!(readme.contains("HTTP/OpenAI-compatible API"));
+    assert!(readme.contains("AWS Terraform deployment"));
+    assert!(readme.contains("Planned"));
+    assert!(readme.contains("Python SDK"));
+    assert!(readme.contains("TypeScript SDK"));
+    assert!(readme.contains("Not Implemented Yet"));
+    assert!(readme.contains("The Mission"));
+    assert!(readme.contains("Key Features"));
+    assert!(readme.contains("Quickstart"));
+    assert!(readme.contains("Architecture"));
+    assert!(readme.contains("Why Choose Emberlane?"));
+    assert!(readme.contains("Professional Hardware Support"));
+    assert!(readme.contains("Integrated MCP Support"));
 }
 
 #[test]

@@ -12,6 +12,7 @@ cargo run -- aws modes
 - desired `0`
 - max `1`
 - Warm Pool disabled
+- Spot instances
 - Lowest idle cost expectation
 - Coldest wake path
 
@@ -21,6 +22,7 @@ cargo run -- aws modes
 - desired `0`
 - max `1`
 - Warm Pool enabled
+- Spot instances
 - Some storage/EBS/prepared-capacity cost
 - Warmer starts when the pool has capacity
 
@@ -30,6 +32,7 @@ cargo run -- aws modes
 - desired `1`
 - max `1`
 - Warm Pool disabled
+- On-demand instances
 - Highest idle cost
 - Fastest response
 

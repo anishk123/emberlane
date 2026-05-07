@@ -82,6 +82,12 @@ variable "public_alb" {
   default     = true
 }
 
+variable "require_alb_secret" {
+  description = "Require the Lambda WakeBridge to send an X-Emberlane-Secret header to the ALB. Disabled by default to keep the public dev/test path simple."
+  type        = bool
+  default     = false
+}
+
 variable "instance_type" {
   description = "AWS instance type for the runtime ASG."
   type        = string
@@ -188,6 +194,12 @@ variable "enable_warm_pool" {
   description = "Create an ASG Warm Pool for prepared instances."
   type        = bool
   default     = true
+}
+
+variable "use_spot_instances" {
+  description = "Use Spot instances for cost savings. Automatically true for economy/balanced modes, false for always-on."
+  type        = bool
+  default     = false
 }
 
 variable "warm_pool_min_size" {

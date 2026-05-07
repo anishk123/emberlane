@@ -8,6 +8,7 @@ This is a small Python Lambda bridge for AWS ASG-backed Emberlane runtimes. It i
 - Runtime requests are proxied to `BASE_URL + path`.
 - File metadata in request bodies, including `s3_uri` and `presigned_url`, is passed through unchanged.
 - If `API_KEY` is set, requests require `Authorization: Bearer <API_KEY>`.
+- The bridge also accepts `x-api-key: <API_KEY>` for convenience.
 - `MODE=fast` wakes the ASG and waits up to `FAST_WAIT_SECS`.
 - `MODE=slow` wakes the ASG and immediately returns a 202 warming response.
 - Requests with `"stream": true` return a clear error because this Python bridge buffers responses. Use `aws/lambda-bridge-node` for Lambda response streaming where AWS networking constraints allow it.

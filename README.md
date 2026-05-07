@@ -20,14 +20,14 @@ Running a `g5.xlarge` 24/7 costs **~$730/month**. Emberlane slashes that to unde
 
 ## ✨ Key Features
 - ⚡ **Auto-scaling:** Zero to Ready in <30s (using ASG Warm Pools).
-- 🔒 **Secret Handshake:** Advanced security using ALB header validation and a Lambda WakeBridge entry point.
+- 🔒 **Lambda WakeBridge:** Public Function URL entry point with an optional ALB header gate for extra dev/test friction.
 - 🏎️ **Optimized Runtimes:** Deeply tuned for **AWS Inferentia2 (Inf2)** and **NVIDIA G5**.
 - 🛠️ **CLI-First Ops:** Deploy, benchmark, and audit costs with a single command.
 - 🤖 **OpenAI Compatible:** Drop-in replacement for any OpenAI-client.
 
 ---
 
-## 🛠️ Quickstart (AWS)
+## AWS Quickstart
 
 Deploy your own private, secure endpoint in minutes:
 
@@ -48,6 +48,14 @@ cargo run -- aws chat "Why is Emberlane so cool?"
 
 > **Pro-Tip:** Run `cargo run -- aws models` to see the full list of supported high-performance model profiles.
 
+Emberlane cost modes map to AWS instance pricing as follows:
+- `economy`: Spot instances, no warm pool
+- `balanced`: Spot instances, warm pool enabled
+- `always-on`: On-demand instances, no warm pool
+
+## AWS Terraform deployment
+For repeatable AWS setup, see [docs/aws-deploy-from-zero.md](docs/aws-deploy-from-zero.md). The CLI renders Terraform variables, runs plan/apply, and manages destroy for you.
+
 ## 📐 Architecture (Secure-by-Default)
 
 Emberlane doesn't just save money; it locks down your hardware. Your EC2 instances have **zero** public ports open.
@@ -56,7 +64,7 @@ Emberlane doesn't just save money; it locks down your hardware. Your EC2 instanc
 graph TD
     Client([User App]) -- "<b>1. Secure Entrance</b><br/>API Key" --> Lambda[Lambda WakeBridge]
     subgraph "Private AWS VPC"
-        Lambda -- "<b>2. Secret Handshake</b><br/>X-Emberlane-Secret" --> ALB[Load Balancer]
+        Lambda -- "<b>2. Optional Header Gate</b><br/>X-Emberlane-Secret" --> ALB[Load Balancer]
         Lambda -.-> ASG[ASG: Request Wake]
         ALB --> EC2[AI Hardware <br/><i>Isolated</i>]
     end
@@ -77,8 +85,9 @@ graph TD
 
 ## 🔥 Professional Hardware Support
 - **NVIDIA G5:** High-throughput CUDA inference via vLLM.
-- **AWS Inferentia2:** The most cost-efficient inference on the planet. Recommended baseline: **`inf2.8xlarge`** (128GB RAM) for rock-solid stability. `inf2.xlarge` is supported for experimental "Economy" configurations.
-- **ASG Warm Pools:** Support for "Pre-warmed" instances for near-instant response times.
+- **AWS Inferentia2:** The most cost-efficient inference on the planet. Recommended baseline: **`inf2.8xlarge`** (128GB RAM) for rock-solid stability. `inf2.xlarge` is supported for experimental economy configurations.
+- **ASG Warm Pools:** Supported for the `balanced` mode to keep prepared capacity available.
+- **Spot vs On-Demand:** `economy` and `balanced` use Spot instances; `always-on` uses on-demand instances.
 
 ---
 
@@ -90,6 +99,17 @@ cargo run -- mcp
 ```
 
 ---
+
+## Planned
+- Python SDK
+- TypeScript SDK
+
+## Not Implemented Yet
+- GCP backend
+- Azure backend
+- production UI
+- full RAG
+- managed hosted service
 
 ## 📜 License
 Emberlane is dual-licensed under **MIT** or **Apache-2.0**. Start building for free.

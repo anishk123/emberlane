@@ -4,6 +4,17 @@ resource "aws_launch_template" "runtime" {
   instance_type = var.instance_type
   key_name      = var.key_name
 
+  dynamic "instance_market_options" {
+    for_each = var.use_spot_instances ? [1] : []
+
+    content {
+      market_type = "spot"
+      spot_options {
+        instance_interruption_behavior = "terminate"
+      }
+    }
+  }
+
   iam_instance_profile {
     name = aws_iam_instance_profile.runtime_instance.name
   }

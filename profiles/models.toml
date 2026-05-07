@@ -1,4 +1,4 @@
-[models.qwen_starter]
+[models.qwen25_15b]
 display_name = "Qwen 2.5 1.5B (Starter)"
 model_id = "Qwen/Qwen2.5-1.5B-Instruct"
 default_accelerator = "cuda"

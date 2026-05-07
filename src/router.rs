@@ -150,8 +150,14 @@ impl RuntimeRouter {
 
         // Inject API Key if configured
         if let Some(key) = self.cfg.api_key() {
-            if !request.headers.iter().any(|(k, _)| k.to_lowercase() == "authorization") {
-                request.headers.insert("Authorization".to_string(), format!("Bearer {}", key));
+            if !request
+                .headers
+                .iter()
+                .any(|(k, _)| k.to_lowercase() == "authorization")
+            {
+                request
+                    .headers
+                    .insert("Authorization".to_string(), format!("Bearer {}", key));
             }
         }
 

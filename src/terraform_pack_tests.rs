@@ -126,7 +126,8 @@ fn terraform_resources_include_required_wakebridge_pieces() {
     assert!(user_data.contains("MODEL_PROFILE"));
     assert!(user_data.contains("ARTIFACT_BUCKET"));
     assert!(user_data.contains("S3_NEURON_ARTIFACTS_URI"));
-    assert!(user_data.contains("bootstrap.sh"));
+    assert!(user_data.contains("systemctl enable --now emberlane-runtime.service"));
+    assert!(user_data.contains("docker run --rm --name emberlane-vllm"));
 }
 
 #[test]

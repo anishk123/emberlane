@@ -73,3 +73,9 @@ output "emberlane_runtime_config" {
   warm_pool_expected = ${var.enable_warm_pool}
   TOML
 }
+
+output "alb_secret" {
+  description = "Secret key for ALB listener rule."
+  value       = var.require_alb_secret ? random_password.alb_secret[0].result : null
+  sensitive   = true
+}

@@ -4,8 +4,9 @@ const autoscaling = new AutoScalingClient({ region: process.env.EMBERLANE_AWS_RE
 
 export function isAuthorized(headers = {}, apiKey = process.env.API_KEY || "") {
   if (!apiKey) return true;
-  const got = Object.entries(headers).find(([key]) => key.toLowerCase() === "authorization")?.[1] || "";
-  return got === `Bearer ${apiKey}`;
+  const gotAuth = Object.entries(headers).find(([key]) => key.toLowerCase() === "authorization")?.[1] || "";
+  const gotApiKey = Object.entries(headers).find(([key]) => key.toLowerCase() === "x-api-key")?.[1] || "";
+  return gotAuth === `Bearer ${apiKey}` || gotApiKey === apiKey;
 }
 
 export function warmingResponse() {

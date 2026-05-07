@@ -36,10 +36,11 @@ resource "aws_lambda_function" "wakebridge" {
       RETRY_AFTER_SECS          = tostring(var.retry_after_secs)
       DESIRED_CAPACITY_ON_WAKE  = tostring(var.desired_capacity_on_wake)
       DESIRED_CAPACITY_ON_SLEEP = tostring(var.desired_capacity_on_sleep)
-      ALB_SECRET                = random_password.alb_secret.result
-      }, var.api_key == null ? {} : {
+      }, merge(
+        var.require_alb_secret ? { ALB_SECRET = random_password.alb_secret[0].result } : {},
+        var.api_key == null ? {} : {
       API_KEY = var.api_key
-    })
+    }))
   }
 
   depends_on = [

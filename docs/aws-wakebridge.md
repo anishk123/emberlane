@@ -83,7 +83,7 @@ For file-aware runtime calls, pair `aws_asg` with the optional S3 artifact store
 
 ## Lambda WakeBridge
 
-The deployable example lives in `aws/lambda-bridge`. It receives Function URL or API Gateway v2 requests, checks health, scales the ASG, and proxies JSON requests to `BASE_URL + path`.
+The deployable example lives in `aws/lambda-bridge`. It receives Function URL or API Gateway v2 requests, checks health, scales the ASG, and proxies JSON requests to `BASE_URL + path`. When `API_KEY` is set, the bridge accepts either `Authorization: Bearer <API_KEY>` or `x-api-key: <API_KEY>`.
 
 If `BASE_URL` is a public ALB, Lambda does not need VPC networking. If `BASE_URL` is an internal ALB or private IP, Lambda must be configured with the correct VPC subnets and security groups.
 

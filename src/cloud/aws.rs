@@ -166,7 +166,10 @@ impl AwsBackend {
             // If the model changed, we should default to its recommended settings
             // unless the user specifically overrides them in this same call.
             if accelerator.is_none() {
-                self.config.accelerator = profile.default_accelerator.parse().map_err(EmberlaneError::InvalidRequest)?;
+                self.config.accelerator = profile
+                    .default_accelerator
+                    .parse()
+                    .map_err(EmberlaneError::InvalidRequest)?;
             }
             if instance.is_none() {
                 self.config.instance_type = profile.recommended_instance;
@@ -315,8 +318,6 @@ impl AwsBackend {
         )))
     }
 
-
-
     async fn run_terraform(&self, args: &[&str], stream: bool) -> Result<Value, EmberlaneError> {
         let mut cmd = Command::new("terraform");
         cmd.args(args)
@@ -365,9 +366,7 @@ impl AwsBackend {
     }
 
     async fn endpoint(&self) -> Result<String, EmberlaneError> {
-        let url = if let Some(url) = &self.endpoint_url {
-            url.clone()
-        } else if let Ok(url) = std::env::var("EMBERLANE_AWS_ENDPOINT") {
+        let url = if let Ok(url) = std::env::var("EMBERLANE_AWS_ENDPOINT") {
             url
         } else {
             let output = Command::new("terraform")
@@ -389,9 +388,15 @@ impl AwsBackend {
             }
         };
 
-        let cleaned = url.trim().trim_matches('"').trim_end_matches('/').to_string();
+        let cleaned = url
+            .trim()
+            .trim_matches('"')
+            .trim_end_matches('/')
+            .to_string();
         if cleaned.is_empty() {
-            return Err(EmberlaneError::ProviderNotConfigured("AWS endpoint URL is empty".to_string()));
+            return Err(EmberlaneError::ProviderNotConfigured(
+                "AWS endpoint URL is empty".to_string(),
+            ));
         }
         Ok(cleaned)
     }
@@ -448,8 +453,16 @@ impl CloudBackend for AwsBackend {
             );
         }
         // Warn when deploying gated models without an HF token
-        let gated_prefixes = ["meta-llama/", "google/gemma-", "mistralai/Mistral-", "mistralai/Mixtral-"];
-        if gated_prefixes.iter().any(|p| profile.model_id.starts_with(p)) {
+        let gated_prefixes = [
+            "meta-llama/",
+            "google/gemma-",
+            "mistralai/Mistral-",
+            "mistralai/Mixtral-",
+        ];
+        if gated_prefixes
+            .iter()
+            .any(|p| profile.model_id.starts_with(p))
+        {
             warnings.push(format!(
                 "model '{}' is likely gated on HuggingFace and requires an HF token. Set hf_token_secret_arn or hf_token_ssm_parameter_name in your Terraform vars, otherwise vLLM will fail to download the model.",
                 profile.model_id
@@ -506,19 +519,30 @@ impl CloudBackend for AwsBackend {
         if let Some(profile) = &self.config.profile {
             obj.insert("aws_profile".to_string(), json!(profile));
         }
-        obj.insert("enable_warm_pool".to_string(), json!(true));
-        obj.insert("warm_pool_min_size".to_string(), json!(1));
+        let enable_warm_pool = matches!(self.config.mode, CostMode::Balanced);
+        obj.insert("enable_warm_pool".to_string(), json!(enable_warm_pool));
+        obj.insert(
+            "warm_pool_min_size".to_string(),
+            json!(if enable_warm_pool { 1 } else { 0 }),
+        );
 
         if let Some(token) = &self.config.hf_token {
             println!("[emberlane] Storing HuggingFace token securely in AWS SSM Parameter Store (/emberlane/hf-token) ...");
-            let result = self.run_aws_cli(&[
-                "ssm", "put-parameter",
-                "--name", "/emberlane/hf-token",
-                "--value", token,
-                "--type", "SecureString",
-                "--overwrite",
-                "--region", &self.config.region,
-            ]).await?;
+            let result = self
+                .run_aws_cli(&[
+                    "ssm",
+                    "put-parameter",
+                    "--name",
+                    "/emberlane/hf-token",
+                    "--value",
+                    token,
+                    "--type",
+                    "SecureString",
+                    "--overwrite",
+                    "--region",
+                    &self.config.region,
+                ])
+                .await?;
             if result["status"].as_i64().unwrap_or(1) != 0 {
                 return Err(EmberlaneError::ProviderNotConfigured(format!(
                     "Failed to store HF token in SSM: {}",
@@ -569,7 +593,9 @@ impl CloudBackend for AwsBackend {
             }
         }
         let init = self.run_terraform(&["init"], true).await?;
-        let apply = self.run_terraform(&["apply", "-auto-approve"], true).await?;
+        let apply = self
+            .run_terraform(&["apply", "-auto-approve"], true)
+            .await?;
         Ok(json!({"tfvars": self.tfvars_path(), "init": init, "apply": apply}))
     }
 
@@ -581,7 +607,8 @@ impl CloudBackend for AwsBackend {
                 "destroy cancelled by user".to_string(),
             ));
         }
-        self.run_terraform(&["destroy", "-auto-approve"], true).await
+        self.run_terraform(&["destroy", "-auto-approve"], true)
+            .await
     }
 
     async fn status(&self) -> Result<Value, EmberlaneError> {
@@ -600,7 +627,7 @@ impl CloudBackend for AwsBackend {
             .post(format!("{endpoint}/v1/chat/completions"))
             .json(&body);
         if let Some(api_key) = &self.config.api_key {
-            req = req.bearer_auth(api_key);
+            req = req.bearer_auth(api_key).header("x-api-key", api_key);
         }
         let resp = req.send().await?;
         let status = resp.status().as_u16();
