@@ -20,10 +20,10 @@ mod terraform_pack_tests;
 
 use clap::{Args, Parser, Subcommand};
 use cloud::{model::CloudBackend, profiles, AwsBackend, CostMode};
-use config::EmberlaneConfig;
+use config::{EmberlaneConfig, S3StorageConfig};
 use error::EmberlaneError;
-use model::{ChatMessage, ChatRequest, RouteRequest};
-use provider::{aws_sample_config, parse_aws_asg_config, render_aws_iam_policy};
+use model::{ChatMessage, ChatRequest, RouteRequest, StorageBackend};
+use provider::{aws_sample_config, parse_aws_asg_config, render_aws_iam_policy, RealCommandRunner};
 use router::RuntimeRouter;
 use serde_json::{json, Value};
 use std::{collections::HashMap, path::PathBuf};
@@ -61,11 +61,19 @@ enum Command {
         message: String,
     },
     Upload {
-        path: PathBuf,
+        #[arg(required = true)]
+        paths: Vec<PathBuf>,
     },
     ChatFile {
         runtime_id: String,
         file_id: String,
+        message: String,
+    },
+    ChatFiles {
+        runtime_id: String,
+        #[arg(required = true)]
+        file_ids: Vec<String>,
+        #[arg(long)]
         message: String,
     },
     Aws {
@@ -315,6 +323,24 @@ enum StorageCommand {
         #[arg(long)]
         check: bool,
     },
+    Use(StorageUseCmd),
+}
+
+#[derive(Args)]
+struct StorageUseCmd {
+    backend: String,
+    #[arg(long)]
+    bucket: Option<String>,
+    #[arg(long, default_value = "uploads/")]
+    prefix: String,
+    #[arg(long)]
+    region: Option<String>,
+    #[arg(long)]
+    profile: Option<String>,
+    #[arg(long, default_value = "aws")]
+    aws_cli: String,
+    #[arg(long, default_value = "dev")]
+    environment: String,
 }
 
 #[derive(Subcommand)]
@@ -434,10 +460,17 @@ async fn run(cli: Cli) -> Result<(), EmberlaneError> {
             let resp = router.chat(&runtime_id, chat_request(message)).await?;
             print_json(resp.body);
         }
-        Command::Upload { path } => {
+        Command::Upload { paths } => {
             let router = local_router(cli.config)?;
-            let record = router.upload_path(path).await?;
-            print_json(json!(record));
+            let mut records = Vec::new();
+            for path in paths {
+                records.push(router.upload_path(path).await?);
+            }
+            if records.len() == 1 {
+                print_json(json!(&records[0]));
+            } else {
+                print_json(json!(records));
+            }
         }
         Command::ChatFile {
             runtime_id,
@@ -446,6 +479,15 @@ async fn run(cli: Cli) -> Result<(), EmberlaneError> {
         } => {
             let router = local_router(cli.config)?;
             let resp = router.chat_file(&runtime_id, &file_id, &message).await?;
+            print_json(resp.body);
+        }
+        Command::ChatFiles {
+            runtime_id,
+            file_ids,
+            message,
+        } => {
+            let router = local_router(cli.config)?;
+            let resp = router.chat_files(&runtime_id, &file_ids, &message).await?;
             print_json(resp.body);
         }
         Command::Aws { command } => run_aws_command(cli.config, command).await?,
@@ -536,6 +578,90 @@ async fn run_storage_command(
         StorageCommand::Status { check } => {
             let cfg = EmberlaneConfig::discover(config)?;
             print_json(files::storage_status(&cfg, check).await?);
+        }
+        StorageCommand::Use(cmd) => {
+            let mut cfg = EmberlaneConfig::discover(config)?;
+            let backend = cmd.backend.parse::<StorageBackend>().map_err(|e| {
+                EmberlaneError::InvalidRequest(format!("invalid storage backend: {e}"))
+            })?;
+            match backend {
+                StorageBackend::Local => {
+                    cfg.storage.backend = StorageBackend::Local;
+                    cfg.storage.s3 = None;
+                }
+                StorageBackend::S3 => {
+                    let aws_backend = AwsBackend::load_or_default(None)?;
+                    let region = cmd
+                        .region
+                        .unwrap_or_else(|| aws_backend.config.region.clone());
+                    let profile = cmd
+                        .profile
+                        .or_else(|| aws_backend.config.profile.clone())
+                        .filter(|v| !v.trim().is_empty());
+                    let bucket = if let Some(bucket) = cmd.bucket {
+                        bucket
+                    } else {
+                        let credentials = test_harness::check_aws_credentials(
+                            profile.clone(),
+                            Some(region.clone()),
+                        )
+                        .await?;
+                        if credentials["ok"].as_bool() != Some(true) {
+                            return Err(EmberlaneError::ProviderNotConfigured(
+                                credentials["message"]
+                                    .as_str()
+                                    .unwrap_or(
+                                        "AWS credentials are required to derive the S3 bucket",
+                                    )
+                                    .to_string(),
+                            ));
+                        }
+                        let account_id = credentials["account_id"]
+                            .as_str()
+                            .filter(|v| !v.trim().is_empty())
+                            .ok_or_else(|| {
+                                EmberlaneError::ProviderNotConfigured(
+                                    "could not determine AWS account id for S3 bucket naming"
+                                        .to_string(),
+                                )
+                            })?;
+                        format!("emberlane-{}-{}-{}", cmd.environment, account_id, region)
+                    };
+                    cfg.storage.backend = StorageBackend::S3;
+                    cfg.storage.s3 = Some(S3StorageConfig {
+                        bucket,
+                        prefix: cmd.prefix,
+                        region,
+                        aws_cli: cmd.aws_cli,
+                        profile,
+                        presign_downloads: true,
+                        presign_expires_secs: 900,
+                        pass_s3_uri: true,
+                    });
+                }
+            }
+            let path = cfg
+                .config_path
+                .clone()
+                .unwrap_or_else(|| PathBuf::from("emberlane.toml"));
+            cfg.write_to(path.clone(), true)?;
+            let mut storage_note = json!({"backend": cfg.storage.backend});
+            if let Some(s3) = cfg.storage.s3.as_ref() {
+                if let StorageBackend::S3 = cfg.storage.backend {
+                    let created =
+                        files::ensure_s3_bucket_exists(s3, std::sync::Arc::new(RealCommandRunner))
+                            .await?;
+                    storage_note["bucket"] = json!(s3.bucket);
+                    storage_note["region"] = json!(s3.region);
+                    storage_note["created_bucket"] = json!(created);
+                }
+            }
+            print_json(json!({
+                "ok": true,
+                "config_path": path,
+                "storage_note": storage_note,
+                "storage": files::storage_status(&cfg, false).await?
+            }));
         }
     }
     Ok(())

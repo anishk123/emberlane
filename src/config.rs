@@ -18,6 +18,7 @@ pub struct ServerConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmberlaneConfig {
+    #[serde(default)]
     pub server: ServerConfig,
     #[serde(default)]
     pub storage: StorageConfig,
@@ -155,6 +156,23 @@ impl EmberlaneConfig {
             fs::create_dir_all(parent)?;
         }
         fs::write(path, DEFAULT_CONFIG_TOML)?;
+        Ok(())
+    }
+
+    pub fn write_to(&self, path: PathBuf, force: bool) -> Result<(), EmberlaneError> {
+        if path.exists() && !force {
+            return Err(EmberlaneError::InvalidRequest(format!(
+                "{} already exists; use --force to overwrite",
+                path.display()
+            )));
+        }
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let text = toml::to_string_pretty(self).map_err(|e| {
+            EmberlaneError::InvalidRequest(format!("failed to render {}: {e}", path.display()))
+        })?;
+        fs::write(path, text)?;
         Ok(())
     }
 }
@@ -335,6 +353,24 @@ mod tests {
         let cfg = EmberlaneConfig::discover(Some(path)).unwrap();
         assert_eq!(cfg.storage.backend, StorageBackend::Local);
         assert_eq!(cfg.storage.inline_file_max_bytes, 200_000);
+    }
+
+    #[test]
+    fn partial_storage_config_uses_default_server() {
+        let cfg: EmberlaneConfig = toml::from_str(
+            r#"
+            [storage]
+            backend = "s3"
+
+            [storage.s3]
+            bucket = "bucket"
+            region = "us-west-2"
+            "#,
+        )
+        .unwrap();
+        assert_eq!(cfg.server.default_runtime_id, "echo");
+        assert_eq!(cfg.storage.backend, StorageBackend::S3);
+        assert_eq!(cfg.storage.s3.unwrap().bucket, "bucket");
     }
 
     #[test]

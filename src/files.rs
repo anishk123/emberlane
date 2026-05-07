@@ -55,6 +55,29 @@ pub fn artifact_store_with_runner(
     }
 }
 
+pub async fn ensure_s3_bucket_exists(
+    cfg: &S3StorageConfig,
+    runner: Arc<dyn CommandRunner>,
+) -> Result<bool, EmberlaneError> {
+    validate_s3_config(cfg)?;
+    let head = runner.run(&cfg.aws_cli, &s3_head_bucket_args(cfg)).await?;
+    if head.status == 0 {
+        return Ok(false);
+    }
+
+    let create = runner
+        .run(&cfg.aws_cli, &s3_create_bucket_args(cfg))
+        .await?;
+    if create.status != 0 {
+        return Err(EmberlaneError::S3UploadFailed(format!(
+            "could not create missing bucket s3://{}: {}",
+            cfg.bucket,
+            clean_stderr(&create.stderr)
+        )));
+    }
+    Ok(true)
+}
+
 #[allow(dead_code)]
 pub async fn store_path(
     cfg: &EmberlaneConfig,
@@ -228,7 +251,15 @@ impl ArtifactStore for S3ArtifactStore {
         let args = s3_cp_upload_args(&self.cfg, source_path, &s3_uri);
         let out = self.runner.run(&self.cfg.aws_cli, &args).await?;
         if out.status != 0 {
-            return Err(EmberlaneError::S3UploadFailed(clean_stderr(&out.stderr)));
+            if is_missing_bucket_error(&out.stderr) {
+                let _ = ensure_s3_bucket_exists(&self.cfg, self.runner.clone()).await?;
+                let retry = self.runner.run(&self.cfg.aws_cli, &args).await?;
+                if retry.status != 0 {
+                    return Err(EmberlaneError::S3UploadFailed(clean_stderr(&retry.stderr)));
+                }
+            } else {
+                return Err(EmberlaneError::S3UploadFailed(clean_stderr(&out.stderr)));
+            }
         }
         Ok(FileRecord {
             id,
@@ -437,6 +468,36 @@ fn s3_ls_args(cfg: &S3StorageConfig) -> Vec<String> {
     args
 }
 
+fn s3_head_bucket_args(cfg: &S3StorageConfig) -> Vec<String> {
+    let mut args = vec![
+        "s3api".to_string(),
+        "head-bucket".to_string(),
+        "--bucket".to_string(),
+        cfg.bucket.clone(),
+        "--region".to_string(),
+        cfg.region.clone(),
+    ];
+    add_profile_args(&mut args, cfg);
+    args
+}
+
+fn s3_create_bucket_args(cfg: &S3StorageConfig) -> Vec<String> {
+    let mut args = vec![
+        "s3api".to_string(),
+        "create-bucket".to_string(),
+        "--bucket".to_string(),
+        cfg.bucket.clone(),
+        "--region".to_string(),
+        cfg.region.clone(),
+    ];
+    if cfg.region != "us-east-1" {
+        args.push("--create-bucket-configuration".to_string());
+        args.push(format!("LocationConstraint={}", cfg.region));
+    }
+    add_profile_args(&mut args, cfg);
+    args
+}
+
 fn add_profile_args(args: &mut Vec<String>, cfg: &S3StorageConfig) {
     if let Some(profile) = cfg.profile.as_deref().filter(|v| !v.trim().is_empty()) {
         args.push("--profile".to_string());
@@ -451,6 +512,11 @@ fn clean_stderr(stderr: &str) -> String {
     } else {
         trimmed.to_string()
     }
+}
+
+fn is_missing_bucket_error(stderr: &str) -> bool {
+    let text = stderr.to_lowercase();
+    text.contains("nosuchbucket") || text.contains("the specified bucket does not exist")
 }
 
 #[allow(dead_code)]
@@ -563,6 +629,63 @@ mod tests {
         assert_eq!(calls[0].0, "aws");
         assert!(calls[0].1.contains(&"cp".to_string()));
         assert!(calls[0].1.contains(&"--profile".to_string()));
+    }
+
+    #[tokio::test]
+    async fn s3_upload_missing_bucket_creates_bucket_and_retries() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("note.md");
+        std::fs::write(&source, "hello s3").unwrap();
+        let runner = Arc::new(FakeCommandRunner::default());
+        runner.push(CommandOutput {
+            status: 1,
+            stdout: String::new(),
+            stderr: "An error occurred (NoSuchBucket) when calling the PutObject operation: The specified bucket does not exist".to_string(),
+        });
+        runner.push(CommandOutput {
+            status: 1,
+            stdout: String::new(),
+            stderr: String::new(),
+        });
+        runner.push(CommandOutput {
+            status: 0,
+            stdout: String::new(),
+            stderr: String::new(),
+        });
+        runner.push(CommandOutput {
+            status: 0,
+            stdout: String::new(),
+            stderr: String::new(),
+        });
+        let store = S3ArtifactStore::new(s3_cfg(), runner.clone());
+        let file = store
+            .put_file(&source, "note.md", Some("text/markdown".to_string()))
+            .await
+            .unwrap();
+        assert_eq!(file.storage_backend, StorageBackend::S3);
+        let calls = runner.calls();
+        assert_eq!(calls.len(), 4);
+        assert!(calls[0].1.contains(&"cp".to_string()));
+        assert!(calls[1].1.contains(&"head-bucket".to_string()));
+        assert!(calls[2].1.contains(&"create-bucket".to_string()));
+        assert!(calls[3].1.contains(&"cp".to_string()));
+    }
+
+    #[tokio::test]
+    async fn ensure_bucket_exists_skips_existing_bucket() {
+        let runner = Arc::new(FakeCommandRunner::default());
+        runner.push(CommandOutput {
+            status: 0,
+            stdout: String::new(),
+            stderr: String::new(),
+        });
+        let created = ensure_s3_bucket_exists(&s3_cfg(), runner.clone())
+            .await
+            .unwrap();
+        assert!(!created);
+        let calls = runner.calls();
+        assert_eq!(calls.len(), 1);
+        assert!(calls[0].1.contains(&"head-bucket".to_string()));
     }
 
     #[tokio::test]

@@ -1,6 +1,6 @@
-# 🔥 Emberlane: The $0.01/hr LLM Gateway
+# Emberlane
 
-**Stop paying for idle GPUs.** Emberlane is a Scale-to-Zero gateway that puts professional-grade AI hardware (NVIDIA G5 / AWS Inferentia2) behind a secure, cost-saving shield.
+Your own OpenAI-compatible AI endpoint. Run locally with Ollama or deploy to AWS with scale-to-zero.
 
 [![CI](https://github.com/anishk123/emberlane/actions/workflows/ci.yml/badge.svg)](https://github.com/anishk123/emberlane/actions)
 ![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)
@@ -9,108 +9,158 @@
 ![AWS](https://img.shields.io/badge/AWS-supported-FF9900)
 ![Inferentia2](https://img.shields.io/badge/Inf2-experimental-blueviolet)
 
----
+## What Emberlane Does
 
-## 🚀 The Mission
-Running a `g5.2xlarge` 24/7 costs **roughly hundreds of dollars per month** depending on region and pricing model. Emberlane reduces idle cost by automating the entire "Scale-to-Zero" lifecycle. 
+Emberlane is a local-first LLM gateway with one shipped CLI binary. It can:
 
-1. **Request Hits:** Your secure gateway wakes the hardware.
-2. **AI Responds:** Requests are proxied instantly to vLLM.
-3. **Idle Hits:** The hardware sleeps. You stop paying.
+- run local chat with the built-in echo runtime
+- run local chat with Ollama
+- upload text files and ask questions about one or more documents
+- expose MCP tools for agent clients
+- serve an HTTP and OpenAI-compatible API
+- deploy an AWS scale-to-zero stack with Terraform
 
-## ✨ Key Features
-- ⚡ **Auto-scaling:** Zero to Ready in <30s (using ASG Warm Pools).
-- 🔒 **Lambda WakeBridge:** Public Function URL entry point with an optional ALB header gate for extra dev/test friction.
-- 🏎️ **Supported Runtimes:** CUDA/G5 is the default path; **AWS Inferentia2 (Inf2)** is available for experimental benchmarking.
-- 🛠️ **CLI-First Ops:** Deploy, benchmark, and audit costs with a single command.
-- 🤖 **OpenAI Compatible:** Drop-in replacement for any OpenAI-client.
+## Supported Interfaces
 
----
+- CLI for local setup, AWS deploy, benchmarking, cost reports, diagnostics, and cleanup
+- MCP stdio for agent/tool integration
+- HTTP API for apps and internal services
+- OpenAI-compatible chat endpoints for existing clients
 
-## AWS Quickstart
-
-Deploy your own private, secure endpoint in minutes:
+## Local Quickstart
 
 ```sh
-# 1. Initialize your AWS environment
-cargo run -- aws init --profile your-profile
-
-# 2. Deploy your chosen model
-# Run without --model for interactive selection.
-# Default first path: Qwen 3.5 9B on g5.2xlarge.
-cargo run -- aws deploy --mode balanced --profile your-profile
-
-# Or specify a model directly:
-cargo run -- aws deploy --model qwen35_9b --mode balanced --profile your-profile
-
-# 3. Chat with your live cloud hardware!
-cargo run -- aws chat "Why is Emberlane so cool?"
-```
-
-> **Pro-Tip:** Run `cargo run -- aws models` to see the full list of supported high-performance model profiles.
-
-Emberlane cost modes map to AWS instance pricing as follows:
-- `economy`: Spot instances, no warm pool
-- `balanced`: On-demand instances, warm pool enabled
-- `always-on`: On-demand instances, no warm pool
-
-## AWS Terraform deployment
-For repeatable AWS setup, see [docs/aws-deploy-from-zero.md](docs/aws-deploy-from-zero.md). The CLI renders Terraform variables, runs plan/apply, and manages destroy for you.
-
-## 📐 Architecture (Secure-by-Default)
-
-Emberlane doesn't just save money; it locks down your hardware. Your EC2 instances have **zero** public ports open.
-
-```mermaid
-graph TD
-    Client([User App]) -- "<b>1. Secure Entrance</b><br/>API Key" --> Lambda[Lambda WakeBridge]
-    subgraph "Private AWS VPC"
-        Lambda -- "<b>2. Optional Header Gate</b><br/>X-Emberlane-Secret" --> ALB[Load Balancer]
-        Lambda -.-> ASG[ASG: Request Wake]
-        ALB --> EC2[AI Hardware <br/><i>Isolated</i>]
-    end
-```
-
----
-
-## 📊 Why Choose Emberlane?
-
-| Feature | Standard "Always-On" Deployment | **Emberlane** |
-| :--- | :--- | :--- |
-| **Monthly Cost** | ~$730.00 | **<$10.00** |
-| **Idle Ports** | Publicly exposed | **Completely Isolated** |
-| **Hardware** | Fixed | **Elastic (G5 / Inf2)** |
-| **Complexity** | Manual Setup | **One command** |
-
----
-
-## 🔥 Professional Hardware Support
-- **NVIDIA G5:** The default first CUDA path. Qwen 3.5 9B on `g5.2xlarge` is the recommended starting point.
-- **AWS Inferentia2:** Experimental and workload-dependent. It can be a good fit to benchmark, but it is not universally cheaper than NVIDIA G instances. `inf2.xlarge` is supported for experimental economy configurations, and CUDA/G5 remains the recommended first path.
-- **ASG Warm Pools:** Supported for the `balanced` mode to keep prepared capacity available.
-- **Spot vs On-Demand:** `economy` uses Spot instances; `balanced` and `always-on` use on-demand instances.
-
----
-
-## 🛠️ Integrated MCP Support
-Emberlane is a first-class citizen for AI agents. It exposes **MCP stdio tools** so your agents can wake runtimes, upload files, and chat with context automatically.
-
-```sh
+cargo run -- init
+cargo run -- serve
+cargo run -- chat echo "hello"
+cargo run -- chat ollama "hello"
+cargo run -- upload README.md
+cargo run -- chat-file echo <file_id> "summarize this"
+cargo run -- chat-files echo <file_id_1> <file_id_2> --message "compare these notes"
 cargo run -- mcp
 ```
 
----
+If Ollama is unavailable, Emberlane will tell you how to install it, start it, and pull the model it expects.
+
+## AWS Quickstart
+
+```sh
+cargo run -- aws credentials check --profile your-profile
+cargo run -- aws init --profile your-profile
+cargo run -- aws models
+cargo run -- aws modes
+cargo run -- aws deploy --profile your-profile --mode balanced
+cargo run -- aws chat "Explain scale-to-zero inference" --profile your-profile
+cargo run -- aws benchmark --profile your-profile
+cargo run -- aws cost-report --profile your-profile
+cargo run -- aws destroy --profile your-profile
+```
+
+If you want a guided deploy path, Emberlane renders Terraform variables, applies the stack, and stores the resolved endpoint in `aws/emberlane.aws.toml`.
+
+## File Storage And Multi-Document Chat
+
+Emberlane stores uploaded files locally by default. For AWS deployments, you can switch to S3-backed storage so remote runtimes can fetch uploaded documents without depending on your laptop.
+
+```sh
+cargo run -- storage use local
+cargo run -- storage use s3 --profile your-profile --region us-west-2
+```
+
+When S3 storage is enabled, Emberlane will create the derived artifact bucket on demand if your AWS credentials allow it.
+
+Upload one or more text documents:
+
+```sh
+cargo run -- upload README.md docs/aws-deploy-from-zero.md
+```
+
+Then ask a question about one or more uploaded documents:
+
+```sh
+cargo run -- chat-files qwen35_9b <file_id_1> <file_id_2> --message "compare the AWS deployment notes"
+```
+
+For a single document, `chat-file` still works:
+
+```sh
+cargo run -- chat-file ollama <file_id> "summarize this"
+```
+
+## Model Choices
+
+Use `cargo run -- aws models` to list the available model profiles.
+
+The default AWS CUDA path is:
+
+- `qwen35_9b`
+- `g5.2xlarge`
+- `balanced`
+
+That is the recommended first path for public release. Inf2/Neuron is supported for experimental evaluation, but it is not presented as universally cheaper.
+
+## Cost Modes
+
+- `economy`: Spot instances, no warm pool, lowest idle cost
+- `balanced`: On-demand instances, warm pool enabled, faster wake with some idle overhead
+- `always-on`: On-demand instances, no warm pool, fastest steady-state response
+
+## MCP Support
+
+Emberlane exposes MCP tools for agents and developer tools. Supported tools:
+
+- `emberlane_list_runtimes`
+- `emberlane_status`
+- `emberlane_chat`
+- `emberlane_upload_file`
+- `emberlane_chat_file`
+- `emberlane_wake`
+- `emberlane_sleep`
+
+MCP is the recommended integration path for agent clients. The HTTP/OpenAI-compatible endpoint is the recommended path for app integration. The CLI is the recommended path for deployment, benchmarking, and operations.
+
+## Architecture
+
+Emberlane is intentionally simple:
+
+```mermaid
+graph TD
+    Client([Client or Agent]) --> CLI[CLI / MCP / HTTP]
+    CLI --> Router[Emberlane Router]
+    Router --> Local[Local Echo or Ollama]
+    Router --> AWS[AWS WakeBridge + ASG]
+    Router --> Storage[Local or S3 File Storage]
+```
+
+AWS is the first implemented hyperscaler backend. GCP and Azure are planned for later.
+
+## Implemented Now
+
+- local echo runtime
+- local Ollama runtime
+- file upload and chat with `.txt` / `.md`
+- MCP stdio
+- HTTP API
+- OpenAI-compatible chat endpoint
+- AWS Terraform deployment
+- AWS benchmark and cost-report commands
+- AWS S3-backed file storage
 
 ## Planned
+
 - Python SDK
 - TypeScript SDK
-
-## Not Implemented Yet
 - GCP backend
 - Azure backend
-- production UI
+- richer UI
+
+## Not Implemented Yet
+
 - full RAG
 - managed hosted service
+- production multi-tenant auth
+- dashboards
 
-## 📜 License
-Emberlane is dual-licensed under **MIT** or **Apache-2.0**. Start building for free.
+## License
+
+Emberlane is dual-licensed under MIT OR Apache-2.0.

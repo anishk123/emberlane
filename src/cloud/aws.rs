@@ -3,7 +3,12 @@ use super::{
     modes::CostMode,
     profiles,
 };
-use crate::{error::EmberlaneError, util};
+use crate::{
+    config::{EmberlaneConfig, S3StorageConfig},
+    error::EmberlaneError,
+    model::StorageBackend,
+    util,
+};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -641,6 +646,7 @@ impl CloudBackend for AwsBackend {
         let apply = self
             .run_terraform(&["apply", "-auto-approve"], true)
             .await?;
+        let terraform_outputs = self.run_terraform(&["output", "-json"], false).await.ok();
         let endpoint_url = self
             .run_terraform(&["output", "-raw", "lambda_function_url"], false)
             .await
@@ -660,6 +666,35 @@ impl CloudBackend for AwsBackend {
                     EmberlaneError::Internal(format!("failed to persist AWS config: {err}"))
                 })?,
             )?;
+        }
+        if let Some(outputs) = terraform_outputs
+            .as_ref()
+            .and_then(|value| value.get("stdout").and_then(Value::as_str))
+            .and_then(|text| serde_json::from_str::<Value>(text).ok())
+        {
+            if let Some(bucket) = outputs
+                .get("artifact_bucket_name")
+                .and_then(|v| v.get("value"))
+                .and_then(Value::as_str)
+                .filter(|value| !value.trim().is_empty())
+            {
+                let emberlane_config_path = repo_root().join("emberlane.toml");
+                if emberlane_config_path.exists() {
+                    let mut cfg = EmberlaneConfig::discover(Some(emberlane_config_path.clone()))?;
+                    cfg.storage.backend = StorageBackend::S3;
+                    cfg.storage.s3 = Some(S3StorageConfig {
+                        bucket: bucket.to_string(),
+                        prefix: "uploads/".to_string(),
+                        region: self.config.region.clone(),
+                        aws_cli: "aws".to_string(),
+                        profile: self.config.profile.clone(),
+                        presign_downloads: true,
+                        presign_expires_secs: 900,
+                        pass_s3_uri: true,
+                    });
+                    cfg.write_to(emberlane_config_path, true)?;
+                }
+            }
         }
         Ok(json!({
             "tfvars": self.tfvars_path(),

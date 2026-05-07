@@ -35,6 +35,13 @@ Emberlane uses the AWS CLI for v0.3:
 - Download for small file-chat: `aws s3 cp s3://bucket/key - --region <region>`
 - Presign: `aws s3 presign s3://bucket/key --expires-in <seconds> --region <region>`
 
+You usually do not need to hand-create the bucket. Emberlane can switch the active storage backend for you and will create the derived AWS artifact bucket on demand when credentials allow it:
+
+```sh
+cargo run -- storage use local
+cargo run -- storage use s3 --profile emberlane --region us-west-2
+```
+
 Normal tests use fake command runners and do not require AWS credentials.
 
 ## Upload Flow
@@ -61,6 +68,15 @@ prefix/yyyy/mm/dd/<file_id>/<sanitized_original_name>
 ```
 
 Original filenames are never trusted as paths.
+
+## Multiple Documents In AWS
+
+You can upload multiple text documents at once and then ask a question about more than one uploaded file:
+
+```sh
+cargo run -- upload README.md docs/aws-deploy-from-zero.md
+cargo run -- chat-files qwen35_9b <file_id_1> <file_id_2> --message "compare these notes"
+```
 
 ## Presigned URL Flow
 

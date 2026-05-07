@@ -184,19 +184,21 @@ fn examples_and_readme_are_cleaned_to_active_surface() {
     for forbidden in ["plugin marketplace", "multi-agent", "workflow builder"] {
         assert!(!readme.to_lowercase().contains(forbidden));
     }
+    assert!(readme.contains("Supported Interfaces"));
+    assert!(readme.contains(
+        "CLI for local setup, AWS deploy, benchmarking, cost reports, diagnostics, and cleanup"
+    ));
+    assert!(readme.contains("MCP stdio"));
+    assert!(readme.contains("OpenAI-compatible chat endpoints"));
     assert!(readme.contains("AWS Quickstart"));
     assert!(readme.contains("AWS Terraform deployment"));
+    assert!(readme.contains("File Storage And Multi-Document Chat"));
     assert!(readme.contains("Planned"));
     assert!(readme.contains("Python SDK"));
     assert!(readme.contains("TypeScript SDK"));
     assert!(readme.contains("Not Implemented Yet"));
-    assert!(readme.contains("The Mission"));
-    assert!(readme.contains("Key Features"));
-    assert!(readme.contains("Quickstart"));
     assert!(readme.contains("Architecture"));
-    assert!(readme.contains("Why Choose Emberlane?"));
-    assert!(readme.contains("Professional Hardware Support"));
-    assert!(readme.contains("Integrated MCP Support"));
+    assert!(readme.contains("Implemented Now"));
 }
 
 #[test]

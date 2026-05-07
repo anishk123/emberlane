@@ -245,6 +245,42 @@ impl RuntimeRouter {
         ))
     }
 
+    pub async fn chat_files(
+        &self,
+        runtime_id: &str,
+        file_ids: &[String],
+        message: &str,
+    ) -> Result<RouteResponse, EmberlaneError> {
+        if file_ids.is_empty() {
+            return Err(EmberlaneError::InvalidRequest(
+                "at least one file_id is required".to_string(),
+            ));
+        }
+        let runtime = self.runtime(runtime_id)?;
+        let mut sections = Vec::new();
+        for file_id in file_ids {
+            let file = self.storage.get_file(file_id)?;
+            let content = self.inline_file_context(&runtime, &file).await?;
+            sections.push(format!("File name: {}\n{}", file.original_name, content));
+        }
+        let prompt = format!(
+            "Use the following documents to answer the user question.\n\n{}\n\nUser question: {}",
+            sections.join("\n---\n\n"),
+            message
+        );
+        self.chat(
+            runtime_id,
+            ChatRequest {
+                messages: vec![ChatMessage {
+                    role: "user".to_string(),
+                    content: prompt,
+                }],
+                files: file_ids.to_vec(),
+            },
+        )
+        .await
+    }
+
     pub async fn upload_path(
         &self,
         path: impl AsRef<Path>,
@@ -425,6 +461,34 @@ impl RuntimeRouter {
             },
         )
         .await
+    }
+
+    async fn inline_file_context(
+        &self,
+        runtime: &RuntimeConfig,
+        file: &crate::model::FileRecord,
+    ) -> Result<String, EmberlaneError> {
+        ensure_supported_text_file(&file.original_name)?;
+        if file.storage_backend == StorageBackend::Local
+            || file.size_bytes as u64 <= self.cfg.storage.inline_file_max_bytes
+        {
+            let content = String::from_utf8(self.artifact_store()?.get_file_bytes(file).await?)
+                .map_err(|err| {
+                    EmberlaneError::InvalidRequest(format!("stored file is not UTF-8 text: {err}"))
+                })?;
+            return Ok(format!("File content:\n{}\n", content));
+        }
+        if runtime.provider == crate::model::ProviderKind::AwsAsg
+            && file.storage_backend == StorageBackend::S3
+        {
+            return Err(EmberlaneError::InvalidRequest(
+                "chat-files supports multiple text documents only when they fit within inline_file_max_bytes. Use smaller docs, or ask about one S3-backed file at a time.".to_string(),
+            ));
+        }
+        Err(EmberlaneError::InvalidRequest(
+            "chat-files supports only text documents that fit within inline_file_max_bytes"
+                .to_string(),
+        ))
     }
 
     async fn ensure_ready(&self, runtime: &RuntimeConfig) -> Result<(), EmberlaneError> {
