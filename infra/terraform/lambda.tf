@@ -37,9 +37,9 @@ resource "aws_lambda_function" "wakebridge" {
       DESIRED_CAPACITY_ON_WAKE  = tostring(var.desired_capacity_on_wake)
       DESIRED_CAPACITY_ON_SLEEP = tostring(var.desired_capacity_on_sleep)
       }, merge(
-        var.require_alb_secret ? { ALB_SECRET = random_password.alb_secret[0].result } : {},
-        var.api_key == null ? {} : {
-      API_KEY = var.api_key
+      var.require_alb_secret ? { ALB_SECRET = random_password.alb_secret[0].result } : {},
+      var.api_key == null ? {} : {
+        API_KEY = var.api_key
     }))
   }
 
