@@ -55,9 +55,25 @@ resource "aws_lb_listener" "http" {
   tags = local.common_tags
 }
 
-resource "aws_lb_listener_rule" "allow_secret" {
+resource "aws_lb_listener_rule" "allow_health" {
   listener_arn = aws_lb_listener.http.arn
   priority     = 1
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.runtime.arn
+  }
+
+  condition {
+    path_pattern {
+      values = [var.health_path]
+    }
+  }
+}
+
+resource "aws_lb_listener_rule" "allow_secret" {
+  listener_arn = aws_lb_listener.http.arn
+  priority     = 10
 
   action {
     type             = "forward"
