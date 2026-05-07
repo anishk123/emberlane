@@ -1,8 +1,8 @@
 # Emberlane
 
-Your own OpenAI-compatible AI endpoint with cloud scale-to-zero inference.
+AWS scale-to-zero LLM inference, with Ollama for development.
 
-Run locally with Ollama, or deploy model profiles to AWS when you want the cloud to wake up only on demand.
+Run a single binary. Deploy model profiles to AWS when you want the cloud to wake up only on demand, or use Ollama locally when you are iterating.
 
 [![CI](https://github.com/anishk123/emberlane/actions/workflows/ci.yml/badge.svg)](https://github.com/anishk123/emberlane/actions)
 ![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)
@@ -15,23 +15,23 @@ Run locally with Ollama, or deploy model profiles to AWS when you want the cloud
 
 | | |
 | --- | --- |
-| ☁️ **Cloud scale-to-zero** | Run your own OpenAI-compatible endpoint on AWS and only pay when a model is awake. |
-| 🏠 **Local first** | Use Ollama or the built-in echo runtime for fast, offline, repeatable work. |
-| 📦 **Model profiles** | Start with sensible defaults, then override the model, mode, or infrastructure when needed. |
+| ☁️ **AWS scale-to-zero** | Wake a model only when requests arrive, then let it sleep again when idle. |
+| 🦙 **Ollama for dev** | Keep local iteration fast and simple with the runtime people already know. |
+| 📦 **Model profiles** | Choose a profile once, then override model, mode, or instance when needed. |
 | 🔌 **CLI / MCP / HTTP** | Deploy, automate, and integrate through the interface that fits the job. |
 
-Emberlane is for the “I want my own endpoint” use case: a single shipped binary that keeps local iteration simple and cloud inference honest.
+Emberlane is for people who want their own OpenAI-compatible endpoint on AWS, with local Ollama as the friendly dev path.
 
 ## What Emberlane Does
 
 Emberlane ships as one CLI binary and can:
 
+- ☁️ deploy an AWS scale-to-zero stack with Terraform
 - 💬 run local chat with the built-in echo runtime
 - 🦙 run local chat with Ollama
 - 📄 upload text files and ask questions about one or more documents
 - 🧠 expose MCP tools for agent clients
 - 🌐 serve an HTTP and OpenAI-compatible API
-- ☁️ deploy an AWS scale-to-zero stack with Terraform
 
 ## How Defaults Work
 
