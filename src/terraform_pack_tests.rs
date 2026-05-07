@@ -71,6 +71,7 @@ fn variables_include_required_inputs() {
         "asg_max_size",
         "desired_capacity_on_wake",
         "desired_capacity_on_sleep",
+        "enable_idle_scale_down",
         "enable_warm_pool",
         "warm_pool_min_size",
         "warm_pool_pool_state",

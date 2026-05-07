@@ -582,10 +582,25 @@ impl CloudBackend for AwsBackend {
             obj.insert("aws_profile".to_string(), json!(profile));
         }
         let enable_warm_pool = matches!(self.config.mode, CostMode::Balanced);
+        let enable_idle_scale_down = !matches!(self.config.mode, CostMode::AlwaysOn);
+        let desired_capacity_on_sleep = if matches!(self.config.mode, CostMode::AlwaysOn) {
+            1
+        } else {
+            0
+        };
         obj.insert("enable_warm_pool".to_string(), json!(enable_warm_pool));
+        obj.insert(
+            "enable_idle_scale_down".to_string(),
+            json!(enable_idle_scale_down),
+        );
         obj.insert(
             "warm_pool_min_size".to_string(),
             json!(if enable_warm_pool { 1 } else { 0 }),
+        );
+        obj.insert("desired_capacity_on_wake".to_string(), json!(1));
+        obj.insert(
+            "desired_capacity_on_sleep".to_string(),
+            json!(desired_capacity_on_sleep),
         );
 
         if let Some(token) = &self.config.hf_token {
@@ -790,8 +805,8 @@ impl CloudBackend for AwsBackend {
             "message": "No pricing file is configured, so Emberlane will not claim savings.",
             "comparison": [
                 {"mode": "economy", "concept": "lowest idle infrastructure cost; coldest wake path"},
-                {"mode": "balanced", "concept": "uses Warm Pool; may trade storage/prepared-capacity cost for warmer starts"},
-                {"mode": "always-on", "concept": "keeps one instance running; highest idle cost and fastest response"}
+                {"mode": "balanced", "concept": "starts ready, uses Warm Pool, and scales down after idle"},
+                {"mode": "always-on", "concept": "keeps one instance running and does not auto-scale down on idle"}
             ]
         }))
     }

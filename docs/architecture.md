@@ -18,13 +18,17 @@ Local mode does not require AWS, Terraform, S3, or cloud credentials.
 ```text
 Client
   -> Emberlane local gateway or Lambda WakeBridge
-  -> AWS Auto Scaling Group desired capacity 0 -> 1
+  -> AWS Auto Scaling Group
   -> ALB stable base_url
   -> OSS LLM runtime
   -> OpenAI-compatible response
 ```
 
 Terraform creates the AWS deployment pack. Emberlane renders `terraform.tfvars.json` from model profiles and cost modes.
+
+- `economy` wakes from `0 -> 1` on demand.
+- `balanced` starts at `1` and scales down after idle.
+- `always-on` stays at `1`.
 
 ## Future Cloud Shape
 

@@ -46,7 +46,7 @@ Recommended AWS first path:
 
 - model: `qwen35_9b`
 - instance: `g5.2xlarge`
-- mode: `balanced`
+- mode: `balanced` (starts ready, then scales down after idle)
 
 Use `cargo run -- aws models` to inspect profiles, `cargo run -- aws modes` to inspect cost modes, and `cargo run -- aws print-config` to inspect the current AWS defaults before you deploy.
 
@@ -151,6 +151,8 @@ The default AWS CUDA path is `qwen35_9b` on `g5.2xlarge` in `balanced` mode. Tha
 
 That default is tuned for text-only serving: Emberlane passes the profile-specific max context length and `--language-model-only` so Qwen3.5 can run more reliably on the single-GPU `g5.2xlarge` path.
 
+`balanced` is the default public-release operating point: one instance comes up ready, then Emberlane lets it sleep again after idle traffic drops away. `always-on` keeps the instance running after setup, and `economy` is the coldest on-demand path.
+
 Inf2/Neuron is supported for experimental evaluation, but it is not presented as universally cheaper. Use it when you want to benchmark the hardware tradeoffs yourself.
 
 For multi-model comparison:
@@ -165,9 +167,9 @@ For multi-model comparison:
 
 | Mode | Default capacity | Warm pool | Pricing | Good for |
 | --- | --- | --- | --- | --- |
-| `economy` | min `0`, desired `0`, max `1` | Disabled | Spot | Lowest idle cost |
-| `balanced` | min `0`, desired `0`, max `1` | Enabled | On-demand | Warmer starts and easier reuse |
-| `always-on` | min `1`, desired `1`, max `1` | Disabled | On-demand | Fastest steady-state response |
+| `economy` | min `0`, desired `0`, max `1` | Disabled | Spot | Cheapest cold-start path |
+| `balanced` | min `0`, desired `1`, max `1` | Enabled | On-demand | Ready on deploy, scales down after idle |
+| `always-on` | min `1`, desired `1`, max `1` | Disabled | On-demand | Never auto-sleeps |
 
 These are defaults, not hard limits. You can override them in config or on the command line when you need something specific.
 

@@ -5,7 +5,7 @@ This guide connects the pieces:
 ```text
 Client
   -> Lambda WakeBridge or local Emberlane
-  -> ASG desired capacity 0 -> 1
+  -> ASG
   -> EC2 GPU or Inf2 instance
   -> ALB target group
   -> /health
@@ -18,8 +18,8 @@ Client
 2. Start with CUDA/G5 for the first path, or Inf2/Neuron for experimental cost-optimization work.
 3. Bake an AMI or create a launch template that installs the runtime pack.
 4. Create an ALB target group on port `8080` with health path `/health`.
-5. Create an ASG with min `0`, desired `0`, max `1`.
-6. Optionally add a Warm Pool in stopped or hibernated state.
+5. Create an ASG with min `0`, desired `1` for `balanced` or `0` for `economy`, max `1`.
+6. Optionally add a Warm Pool in stopped or hibernated state for `balanced`.
 7. Configure Emberlane with the `inf2-llama` `aws_asg` runtime.
 8. Deploy Lambda WakeBridge.
 9. Send an OpenAI-compatible request.
@@ -28,6 +28,12 @@ Client
 For a repeatable Terraform version of these resources, start with [AWS Deploy From Zero](aws-deploy-from-zero.md). The Terraform pack creates the dev/test VPC path, S3 artifact bucket, IAM roles, ALB, launch template, ASG, optional Warm Pool, and Lambda WakeBridge Function URL.
 
 CUDA/G5 is the recommended first path for v1. Inf2/Neuron remains experimental; benchmark before claiming savings.
+
+Mode semantics:
+
+- `economy` wakes from zero on demand.
+- `balanced` starts ready, then scales down after idle.
+- `always-on` keeps one instance running.
 
 ## AMI And Launch Template
 

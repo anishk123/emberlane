@@ -29,10 +29,13 @@ root_volume_size_gb = 200
 use_baked_ami       = false
 
 asg_min_size         = 0
-asg_desired_capacity = 0
+asg_desired_capacity = 1
 asg_max_size         = 1
 enable_warm_pool     = true
+enable_idle_scale_down = true
 warm_pool_pool_state = "Stopped"
+desired_capacity_on_wake  = 1
+desired_capacity_on_sleep = 0
 
 deploy_lambda_wakebridge = true
 lambda_runtime           = "nodejs20.x"

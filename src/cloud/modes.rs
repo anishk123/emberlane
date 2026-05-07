@@ -39,35 +39,44 @@ impl CostMode {
             CostMode::Economy => json!({
                 "mode": "economy",
                 "enable_warm_pool": false,
+                "enable_idle_scale_down": true,
                 "asg_min_size": 0,
                 "asg_desired_capacity": 0,
                 "asg_max_size": 1,
-                "use_spot_instances": true
+                "use_spot_instances": true,
+                "desired_capacity_on_wake": 1,
+                "desired_capacity_on_sleep": 0
             }),
             CostMode::Balanced => json!({
                 "mode": "balanced",
                 "enable_warm_pool": true,
+                "enable_idle_scale_down": true,
                 "asg_min_size": 0,
-                "asg_desired_capacity": 0,
+                "asg_desired_capacity": 1,
                 "asg_max_size": 1,
-                "use_spot_instances": false
+                "use_spot_instances": false,
+                "desired_capacity_on_wake": 1,
+                "desired_capacity_on_sleep": 0
             }),
             CostMode::AlwaysOn => json!({
                 "mode": "always-on",
                 "enable_warm_pool": false,
+                "enable_idle_scale_down": false,
                 "asg_min_size": 1,
                 "asg_desired_capacity": 1,
                 "asg_max_size": 1,
-                "use_spot_instances": false
+                "use_spot_instances": false,
+                "desired_capacity_on_wake": 1,
+                "desired_capacity_on_sleep": 1
             }),
         }
     }
 
     pub fn rows() -> Vec<Value> {
         vec![
-            json!({"mode":"economy","idle_cost_expectation":"lowest","start_expectation":"coldest path","terraform_behavior":"ASG min=0 desired=0 max=1, warm pool disabled, Spot instances"}),
-            json!({"mode":"balanced","idle_cost_expectation":"some storage/EBS or warm-pool related cost","start_expectation":"warmer path when warm pool has capacity","terraform_behavior":"ASG min=0 desired=0 max=1, warm pool enabled, on-demand instances"}),
-            json!({"mode":"always-on","idle_cost_expectation":"highest","start_expectation":"fastest response, no scale-to-zero idle state","terraform_behavior":"ASG min=1 desired=1 max=1, warm pool disabled, on-demand instances"}),
+            json!({"mode":"economy","idle_cost_expectation":"lowest","start_expectation":"coldest path","terraform_behavior":"ASG min=0 desired=0 max=1, warm pool disabled, Spot instances, idle scale-down enabled"}),
+            json!({"mode":"balanced","idle_cost_expectation":"some storage/EBS or warm-pool related cost","start_expectation":"starts ready, then scales down after idle","terraform_behavior":"ASG min=0 desired=1 max=1, warm pool enabled, on-demand instances, idle scale-down enabled"}),
+            json!({"mode":"always-on","idle_cost_expectation":"highest","start_expectation":"fastest response, no idle scale-down","terraform_behavior":"ASG min=1 desired=1 max=1, warm pool disabled, on-demand instances, idle scale-down disabled"}),
         ]
     }
 }

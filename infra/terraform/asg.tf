@@ -54,6 +54,7 @@ resource "aws_autoscaling_group" "runtime" {
 }
 
 resource "aws_autoscaling_policy" "scale_down" {
+  count                  = var.enable_idle_scale_down ? 1 : 0
   name                   = "${local.name_prefix}-scale-down"
   scaling_adjustment     = -1
   adjustment_type        = "ChangeInCapacity"
@@ -62,6 +63,7 @@ resource "aws_autoscaling_policy" "scale_down" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "scale_down" {
+  count               = var.enable_idle_scale_down ? 1 : 0
   alarm_name          = "${local.name_prefix}-idle-scale-down"
   comparison_operator = "LessThanOrEqualToThreshold"
   evaluation_periods  = "3"
@@ -71,7 +73,7 @@ resource "aws_cloudwatch_metric_alarm" "scale_down" {
   statistic           = "Sum"
   threshold           = "0"
   alarm_description   = "Scale down ASG when there are 0 requests for 15 minutes"
-  alarm_actions       = [aws_autoscaling_policy.scale_down.arn]
+  alarm_actions       = [aws_autoscaling_policy.scale_down[0].arn]
   treat_missing_data  = "breaching"
 
   dimensions = {

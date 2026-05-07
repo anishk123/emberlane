@@ -202,6 +202,12 @@ variable "desired_capacity_on_sleep" {
   default     = 0
 }
 
+variable "enable_idle_scale_down" {
+  description = "Create the request-count alarm that scales balanced and economy modes down after idle. Disabled for always-on."
+  type        = bool
+  default     = true
+}
+
 variable "enable_warm_pool" {
   description = "Create an ASG Warm Pool for prepared instances."
   type        = bool

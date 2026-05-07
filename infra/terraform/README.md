@@ -5,7 +5,7 @@ This Terraform pack deploys a dev/test AWS path for a wakeable OSS LLM runtime. 
 ```text
 Client
   -> Lambda WakeBridge Function URL
-  -> Auto Scaling Group desired capacity 0 -> 1
+  -> Auto Scaling Group
   -> EC2 GPU or Inf2 instance
   -> ALB target group
   -> /health
@@ -21,7 +21,10 @@ It is intentionally Terraform, not CDK, and focuses only on the AWS deployment p
 - IAM roles for the EC2 runtime and Lambda WakeBridge.
 - ALB, target group, and HTTP listener.
 - Launch template with CUDA/vLLM or Inf2/Neuron runtime user-data.
-- Auto Scaling Group with desired capacity initially `0`.
+- Auto Scaling Group with desired capacity set by Emberlane mode:
+  - `economy`: `0`
+  - `balanced`: `1`
+  - `always-on`: `1`
 - Optional ASG Warm Pool.
 - Lambda Function URL running the Node WakeBridge for response streaming where supported.
 - Optional ALB header gate for extra friction in dev/test; disabled by default.

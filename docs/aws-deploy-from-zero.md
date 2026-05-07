@@ -5,7 +5,7 @@ This guide deploys a dev/test Emberlane AWS path with Terraform:
 ```text
 Client
   -> Lambda WakeBridge Function URL
-  -> Auto Scaling Group desired capacity 0 -> 1
+  -> Auto Scaling Group
   -> EC2 GPU or Inf2 instance
   -> ALB target group
   -> Inf2 runtime /health
@@ -14,6 +14,17 @@ Client
 
 It does not use CDK and does not deploy unrelated cloud providers.
 
+Emberlane ships three AWS modes:
+
+- `economy`: coldest and cheapest idle path, intended for true scale-to-zero wakeups.
+- `balanced`: the default public-release path, starts one instance ready and scales down after idle.
+- `always-on`: keeps one instance up after setup and does not auto-sleep.
+
+That means the same Terraform pack supports both of these operating shapes:
+
+- cold wake: `economy` from zero to one on demand
+- ready-first: `balanced` or `always-on` already at one during deploy, with only `balanced` scaling back down after idle
+
 ## Current Limitations
 
 - This is a dev/test deployment pack, not a hardened production stack.
@@ -21,6 +32,7 @@ It does not use CDK and does not deploy unrelated cloud providers.
 - Lambda Function URL response streaming is not supported when Lambda is configured inside a VPC.
 - First boot can include model download, container startup, and for Inf2, Neuron compilation; no fixed wake-time promise is made.
 - You must provide a valid GPU, Neuron, or baked AMI ID.
+- `balanced` is not the same as a cold-start-only mode. It should come up ready during deploy and only sleep again after idle traffic falls off.
 
 ## Cost Warning
 
@@ -177,6 +189,7 @@ The first boot can include:
 - A proxy on port `8080` that serves `/health` and forwards `/v1/*` to the model server on port `8000`.
 - Health check transition from `503` to `200`.
 - For Qwen3.5 text-only serving on CUDA/G5, Emberlane passes a profile-specific `--max-model-len` and `--language-model-only` so the model fits the default `g5.2xlarge` path more reliably.
+- For Qwen3.5 on CUDA/G5, Emberlane follows the official text-only serving shape: `Qwen/Qwen3.5-9B`, `--language-model-only`, and a reduced context length that is practical on the single-GPU `g5.2xlarge` default.
 
 This can take several minutes. Warm Pools and baked AMIs reduce repeated work, but they do not guarantee a fixed wake time.
 

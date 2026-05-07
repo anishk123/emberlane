@@ -56,12 +56,24 @@ fn cost_modes_map_to_terraform_values() {
         true
     );
     assert_eq!(
+        CostMode::Economy.terraform_values()["enable_idle_scale_down"],
+        true
+    );
+    assert_eq!(
         CostMode::Balanced.terraform_values()["enable_warm_pool"],
         true
     );
     assert_eq!(
+        CostMode::Balanced.terraform_values()["asg_desired_capacity"],
+        1
+    );
+    assert_eq!(
         CostMode::Balanced.terraform_values()["use_spot_instances"],
         false
+    );
+    assert_eq!(
+        CostMode::Balanced.terraform_values()["enable_idle_scale_down"],
+        true
     );
     assert_eq!(
         CostMode::AlwaysOn.terraform_values()["asg_desired_capacity"],
@@ -70,6 +82,14 @@ fn cost_modes_map_to_terraform_values() {
     assert_eq!(
         CostMode::AlwaysOn.terraform_values()["use_spot_instances"],
         false
+    );
+    assert_eq!(
+        CostMode::AlwaysOn.terraform_values()["enable_idle_scale_down"],
+        false
+    );
+    assert_eq!(
+        CostMode::AlwaysOn.terraform_values()["desired_capacity_on_sleep"],
+        1
     );
 }
 
@@ -89,7 +109,10 @@ async fn aws_backend_renders_cuda_and_inf2_tfvars() {
     assert_eq!(vars["accelerator"], "cuda");
     assert_eq!(vars["runtime_pack"], "cuda-vllm");
     assert_eq!(vars["enable_warm_pool"], true);
+    assert_eq!(vars["enable_idle_scale_down"], true);
     assert_eq!(vars["use_spot_instances"], false);
+    assert_eq!(vars["desired_capacity_on_wake"], 1);
+    assert_eq!(vars["desired_capacity_on_sleep"], 0);
     assert_eq!(vars["model_id"], "Qwen/Qwen3.5-9B");
     assert_eq!(vars["max_model_len"], 4096);
     assert_eq!(vars["language_model_only"], true);
@@ -130,9 +153,26 @@ async fn aws_backend_renders_direct_deploy_profile_region_and_ami() {
     assert_eq!(vars["aws_region"], "us-west-2");
     assert_eq!(vars["ami_id"], "ami-1234567890abcdef0");
     assert_eq!(vars["enable_warm_pool"], true);
+    assert_eq!(vars["enable_idle_scale_down"], true);
     assert_eq!(vars["use_spot_instances"], false);
+    assert_eq!(vars["desired_capacity_on_sleep"], 0);
     assert_eq!(vars["max_model_len"], 4096);
     assert_eq!(vars["language_model_only"], true);
+
+    let always_on = AwsBackend::load_or_default(Some(PathBuf::from("missing.toml")))
+        .unwrap()
+        .with_overrides(
+            Some("qwen35_9b".to_string()),
+            Some("cuda".to_string()),
+            Some("g5.2xlarge".to_string()),
+            Some("always-on".to_string()),
+            None,
+        )
+        .unwrap();
+    let vars = always_on.render_deploy_vars().await.unwrap();
+    assert_eq!(vars["asg_desired_capacity"], 1);
+    assert_eq!(vars["enable_idle_scale_down"], false);
+    assert_eq!(vars["desired_capacity_on_sleep"], 1);
 }
 
 #[test]

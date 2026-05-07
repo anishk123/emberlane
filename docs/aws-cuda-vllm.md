@@ -2,6 +2,8 @@
 
 CUDA/G5 is the recommended first AWS path for Emberlane.
 
+`balanced` is the default operating point: the stack comes up ready, then scales down after idle. `economy` is the coldest scale-to-zero path.
+
 Use:
 
 ```sh
