@@ -26,8 +26,14 @@ locals {
   artifact_bucket_arn            = "arn:aws:s3:::${local.artifact_bucket_name}"
   artifact_objects_arn           = local.artifact_prefix == "" ? "arn:aws:s3:::${local.artifact_bucket_name}/*" : "arn:aws:s3:::${local.artifact_bucket_name}/${local.artifact_prefix}*"
 
-  vpc_id            = var.create_vpc ? aws_vpc.this[0].id : var.vpc_id
-  public_subnet_ids = var.create_vpc ? aws_subnet.public[*].id : var.public_subnet_ids
+  vpc_id                  = var.create_vpc ? aws_vpc.this[0].id : var.vpc_id
+  public_subnet_ids       = var.create_vpc ? aws_subnet.public[*].id : var.public_subnet_ids
+  public_subnet_az_offset = var.create_vpc && length(data.aws_availability_zones.available.names) > length(var.public_subnet_cidrs) ? 1 : 0
+  public_subnet_zone_names = var.create_vpc ? slice(
+    data.aws_availability_zones.available.names,
+    local.public_subnet_az_offset,
+    min(length(data.aws_availability_zones.available.names), local.public_subnet_az_offset + length(var.public_subnet_cidrs)),
+  ) : []
 
   alb_url = "http://${aws_lb.runtime.dns_name}"
 

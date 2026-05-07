@@ -111,6 +111,13 @@ fn terraform_resources_include_required_wakebridge_pieces() {
     assert!(asg.contains("ignore_changes"));
     assert!(asg.contains("desired_capacity"));
 
+    let locals = read("infra/terraform/locals.tf");
+    assert!(locals.contains("public_subnet_az_offset"));
+    assert!(locals.contains("public_subnet_zone_names"));
+
+    let vpc = read("infra/terraform/vpc.tf");
+    assert!(vpc.contains("local.public_subnet_zone_names"));
+
     let lambda = read("infra/terraform/lambda.tf");
     assert!(lambda.contains("aws_lambda_function_url"));
     assert!(lambda.contains("RESPONSE_STREAM"));
