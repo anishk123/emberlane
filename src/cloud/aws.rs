@@ -366,7 +366,9 @@ impl AwsBackend {
     }
 
     async fn endpoint(&self) -> Result<String, EmberlaneError> {
-        let url = if let Ok(url) = std::env::var("EMBERLANE_AWS_ENDPOINT") {
+        let url = if let Some(url) = &self.endpoint_url {
+            url.clone()
+        } else if let Ok(url) = std::env::var("EMBERLANE_AWS_ENDPOINT") {
             url
         } else {
             let output = Command::new("terraform")
@@ -403,6 +405,49 @@ impl AwsBackend {
 
     pub async fn endpoint_url(&self) -> Result<String, EmberlaneError> {
         self.endpoint().await
+    }
+
+    async fn alb_endpoint(&self) -> Result<Option<String>, EmberlaneError> {
+        let output = self
+            .run_terraform(&["output", "-raw", "alb_url"], false)
+            .await?;
+        if output["status"].as_i64().unwrap_or(1) != 0 {
+            return Ok(None);
+        }
+        let value = output["stdout"]
+            .as_str()
+            .unwrap_or("")
+            .trim()
+            .trim_matches('"')
+            .trim_end_matches('/')
+            .to_string();
+        Ok((!value.is_empty()).then_some(value))
+    }
+
+    async fn post_chat(
+        &self,
+        endpoint: &str,
+        message: &str,
+        include_auth: bool,
+    ) -> Result<Value, EmberlaneError> {
+        let profile = profiles::profile(&self.config.model_profile)?;
+        let body = json!({
+            "model": profile.model_id,
+            "messages": [{"role": "user", "content": message}],
+            "stream": false
+        });
+        let mut req = reqwest::Client::new()
+            .post(format!("{endpoint}/v1/chat/completions"))
+            .json(&body);
+        if include_auth {
+            if let Some(api_key) = &self.config.api_key {
+                req = req.bearer_auth(api_key).header("x-api-key", api_key);
+            }
+        }
+        let resp = req.send().await?;
+        let status = resp.status().as_u16();
+        let json_body = resp.json::<Value>().await.unwrap_or_else(|_| json!({}));
+        Ok(json!({"status": status, "body": json_body, "endpoint": endpoint}))
     }
 }
 
@@ -596,7 +641,32 @@ impl CloudBackend for AwsBackend {
         let apply = self
             .run_terraform(&["apply", "-auto-approve"], true)
             .await?;
-        Ok(json!({"tfvars": self.tfvars_path(), "init": init, "apply": apply}))
+        let endpoint_url = self
+            .run_terraform(&["output", "-raw", "lambda_function_url"], false)
+            .await
+            .ok()
+            .and_then(|value| {
+                value["stdout"]
+                    .as_str()
+                    .map(|s| s.trim().trim_matches('"').trim_end_matches('/').to_string())
+            })
+            .filter(|value| !value.is_empty());
+        if let Some(ref endpoint_url) = endpoint_url {
+            let mut rendered = self.to_file();
+            rendered.deploy.endpoint_url = endpoint_url.clone();
+            fs::write(
+                &self.path,
+                toml::to_string_pretty(&rendered).map_err(|err| {
+                    EmberlaneError::Internal(format!("failed to persist AWS config: {err}"))
+                })?,
+            )?;
+        }
+        Ok(json!({
+            "tfvars": self.tfvars_path(),
+            "init": init,
+            "apply": apply,
+            "endpoint_url": endpoint_url
+        }))
     }
 
     async fn destroy(&self, auto_approve: bool) -> Result<Value, EmberlaneError> {
@@ -617,22 +687,25 @@ impl CloudBackend for AwsBackend {
 
     async fn chat(&self, message: &str) -> Result<Value, EmberlaneError> {
         let endpoint = self.endpoint().await?;
-        let profile = profiles::profile(&self.config.model_profile)?;
-        let body = json!({
-            "model": profile.model_id,
-            "messages": [{"role": "user", "content": message}],
-            "stream": false
-        });
-        let mut req = reqwest::Client::new()
-            .post(format!("{endpoint}/v1/chat/completions"))
-            .json(&body);
-        if let Some(api_key) = &self.config.api_key {
-            req = req.bearer_auth(api_key).header("x-api-key", api_key);
+        let result = self.post_chat(&endpoint, message, true).await?;
+        let status = result["status"].as_u64().unwrap_or(0);
+        if matches!(status, 401 | 403) {
+            if let Some(alb_endpoint) = self.alb_endpoint().await? {
+                if alb_endpoint != endpoint {
+                    let fallback = self.post_chat(&alb_endpoint, message, false).await?;
+                    let fallback_status = fallback["status"].as_u64().unwrap_or(0);
+                    if !matches!(fallback_status, 401 | 403) {
+                        return Ok(json!({
+                            "status": fallback_status,
+                            "body": fallback["body"],
+                            "endpoint": fallback["endpoint"],
+                            "fallback": endpoint
+                        }));
+                    }
+                }
+            }
         }
-        let resp = req.send().await?;
-        let status = resp.status().as_u16();
-        let json_body = resp.json::<Value>().await.unwrap_or_else(|_| json!({}));
-        Ok(json!({"status": status, "body": json_body}))
+        Ok(result)
     }
 
     async fn benchmark(&self) -> Result<Value, EmberlaneError> {
