@@ -71,7 +71,7 @@ graph TD
 
 ## 🔥 Professional Hardware Support
 - **NVIDIA G5:** High-throughput CUDA inference via vLLM.
-- **AWS Inf2:** The most cost-efficient inference on the planet, meticulously tuned for stability.
+- **AWS Inferentia2:** The most cost-efficient inference on the planet. Recommended baseline: **`inf2.8xlarge`** (128GB RAM) for rock-solid stability. `inf2.xlarge` is supported for experimental "Economy" configurations.
 - **ASG Warm Pools:** Support for "Pre-warmed" instances for near-instant response times.
 
 ---
