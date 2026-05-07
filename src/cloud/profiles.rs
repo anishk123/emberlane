@@ -12,6 +12,8 @@ pub struct ModelProfile {
     pub status: String,
     #[serde(default)]
     pub language_model_only: bool,
+    #[serde(default)]
+    pub reasoning_parser: Option<String>,
     pub max_model_len: u64,
 }
 
@@ -46,6 +48,7 @@ pub fn rows() -> Result<Vec<serde_json::Value>, EmberlaneError> {
                 "runtime": p.runtime,
                 "status": p.status,
                 "language_model_only": p.language_model_only,
+                "reasoning_parser": p.reasoning_parser,
                 "max_model_len": p.max_model_len
             })
         })

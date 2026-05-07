@@ -41,6 +41,7 @@ fn model_profiles_parse_and_include_cuda_first_profiles() {
     assert_eq!(qwen.recommended_instance, "g5.2xlarge");
     assert_eq!(qwen.status, "recommended");
     assert!(qwen.language_model_only);
+    assert_eq!(qwen.reasoning_parser.as_deref(), Some("qwen3"));
     assert_eq!(qwen.max_model_len, 4096);
     assert_eq!(profiles.get("llama32_1b_inf2").unwrap().status, "stable");
 }
@@ -116,6 +117,7 @@ async fn aws_backend_renders_cuda_and_inf2_tfvars() {
     assert_eq!(vars["model_id"], "Qwen/Qwen3.5-9B");
     assert_eq!(vars["max_model_len"], 4096);
     assert_eq!(vars["language_model_only"], true);
+    assert_eq!(vars["reasoning_parser"], "qwen3");
 
     let inf2 = AwsBackend::load_or_default(Some(PathBuf::from("missing.toml")))
         .unwrap()
@@ -158,6 +160,7 @@ async fn aws_backend_renders_direct_deploy_profile_region_and_ami() {
     assert_eq!(vars["desired_capacity_on_sleep"], 0);
     assert_eq!(vars["max_model_len"], 4096);
     assert_eq!(vars["language_model_only"], true);
+    assert_eq!(vars["reasoning_parser"], "qwen3");
 
     let always_on = AwsBackend::load_or_default(Some(PathBuf::from("missing.toml")))
         .unwrap()
@@ -215,6 +218,7 @@ fn aws_init_config_text_is_cuda_first() {
     assert!(text.contains("mode = \"balanced\""));
     assert!(text.contains("max_model_len = 4096"));
     assert!(text.contains("language_model_only = true"));
+    assert!(text.contains("reasoning_parser = \"qwen3\""));
 }
 
 #[test]

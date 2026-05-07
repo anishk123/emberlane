@@ -149,7 +149,7 @@ Each profile describes one model and the hardware Emberlane recommends for it.
 
 The default AWS CUDA path is `qwen35_9b` on `g5.2xlarge` in `balanced` mode. That is the recommended first path for public release.
 
-That default is tuned for text-only serving: Emberlane passes the profile-specific max context length and `--language-model-only` so Qwen3.5 can run more reliably on the single-GPU `g5.2xlarge` path.
+That default is tuned for text-only serving: Emberlane passes the profile-specific max context length, `--language-model-only`, and the Qwen3 reasoning parser so Qwen3.5 follows the official vLLM serving shape on the single-GPU `g5.2xlarge` path.
 
 `balanced` is the default public-release operating point: one instance comes up ready, then Emberlane lets it sleep again after idle traffic drops away. `always-on` keeps the instance running after setup, and `economy` is the coldest on-demand path.
 

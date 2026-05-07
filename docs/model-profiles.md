@@ -22,4 +22,4 @@ Current default CUDA first path:
 - `qwen35_9b` on `g5.2xlarge`
 - Model ID: `Qwen/Qwen3.5-9B`
 - Runtime: `vllm-cuda`
-- Text-only serving on CUDA uses the profile's max context length and `--language-model-only` so the default `g5.2xlarge` path stays practical.
+- Text-only serving on CUDA uses the profile's max context length, `--language-model-only`, and `--reasoning-parser qwen3` so the default `g5.2xlarge` path stays practical and follows the official vLLM recipe.

@@ -23,6 +23,7 @@ model_profile       = "qwen35_9b"
 model_id            = "Qwen/Qwen3.5-9B"
 max_model_len       = 4096
 language_model_only = true
+reasoning_parser    = "qwen3"
 mode                = "balanced"
 runtime_port        = 8080
 root_volume_size_gb = 200

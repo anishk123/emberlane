@@ -71,6 +71,7 @@ MODEL_PROFILE=${model_profile}
 MODEL_ID=${model_id}
 MAX_MODEL_LEN=${max_model_len}
 LANGUAGE_MODEL_ONLY=${language_model_only}
+REASONING_PARSER=${reasoning_parser}
 ACCELERATOR=${accelerator}
 RUNTIME_PACK=${runtime_pack}
 RUNTIME_PORT=${runtime_port}
@@ -101,7 +102,11 @@ if [[ "${accelerator}" == "cuda" ]]; then
     if [[ "${language_model_only}" == "true" ]]; then
         LANGUAGE_MODEL_ONLY_FLAG="--language-model-only"
     fi
-    CMD_ARGS="--model ${model_id} --max-model-len ${max_model_len} $LANGUAGE_MODEL_ONLY_FLAG --host 0.0.0.0 --port 8000"
+    REASONING_PARSER_FLAG=""
+    if [[ -n "${reasoning_parser}" ]]; then
+        REASONING_PARSER_FLAG="--reasoning-parser ${reasoning_parser}"
+    fi
+    CMD_ARGS="--model ${model_id} --max-model-len ${max_model_len} $LANGUAGE_MODEL_ONLY_FLAG $REASONING_PARSER_FLAG --host 0.0.0.0 --port 8000"
     
     cat >/etc/systemd/system/emberlane-runtime.service <<UNIT
 [Unit]

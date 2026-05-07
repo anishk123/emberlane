@@ -130,6 +130,12 @@ variable "language_model_only" {
   default     = false
 }
 
+variable "reasoning_parser" {
+  description = "Optional vLLM reasoning parser passed to CUDA runtimes, such as qwen3 for Qwen3.5."
+  type        = string
+  default     = ""
+}
+
 variable "accelerator" {
   description = "Accelerator family: cuda or inf2."
   type        = string

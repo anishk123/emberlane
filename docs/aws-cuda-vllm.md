@@ -4,6 +4,8 @@ CUDA/G5 is the recommended first AWS path for Emberlane.
 
 `balanced` is the default operating point: the stack comes up ready, then scales down after idle. `economy` is the coldest scale-to-zero path.
 
+For Qwen3.5, Emberlane copies the official text-only serving shape: `Qwen/Qwen3.5-9B`, `--language-model-only`, and `--reasoning-parser qwen3`.
+
 Use:
 
 ```sh

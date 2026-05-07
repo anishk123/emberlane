@@ -43,6 +43,7 @@ resource "aws_launch_template" "runtime" {
     model_id                    = var.model_id
     max_model_len               = tostring(var.max_model_len)
     language_model_only         = tostring(var.language_model_only)
+    reasoning_parser            = var.reasoning_parser
     accelerator                 = var.accelerator
     runtime_pack                = var.runtime_pack
     artifact_bucket             = local.artifact_bucket_name

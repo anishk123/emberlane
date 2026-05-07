@@ -51,6 +51,8 @@ struct DeploySection {
     max_model_len: u64,
     #[serde(default)]
     language_model_only: bool,
+    #[serde(default)]
+    reasoning_parser: String,
     use_baked_ami: bool,
     public_alb: bool,
     api_key: String,
@@ -222,6 +224,7 @@ impl AwsBackend {
                 ami_id: self.config.ami_id.clone(),
                 max_model_len: profile.max_model_len,
                 language_model_only: profile.language_model_only,
+                reasoning_parser: profile.reasoning_parser.unwrap_or_default(),
                 use_baked_ami: self.config.use_baked_ami,
                 public_alb: self.config.public_alb,
                 api_key: self.config.api_key.clone().unwrap_or_default(),
@@ -561,6 +564,10 @@ impl CloudBackend for AwsBackend {
         obj.insert(
             "language_model_only".to_string(),
             json!(profile.language_model_only),
+        );
+        obj.insert(
+            "reasoning_parser".to_string(),
+            json!(profile.reasoning_parser.unwrap_or_default()),
         );
         obj.insert(
             "instance_type".to_string(),
