@@ -138,7 +138,9 @@ ExecStartPre=-/usr/bin/docker stop emberlane-vllm
 ExecStartPre=-/usr/bin/docker rm emberlane-vllm
 ExecStart=/usr/bin/docker run --rm --name emberlane-vllm \
   $NEURON_DEVICES \
+  --shm-size=2g \
   -e VLLM_USE_V1=0 \
+  -e VLLM_ATTENTION_BACKEND=NEURON \
   -p ${runtime_port}:8000 \
   -e HF_TOKEN=\$${HF_TOKEN} \
   $IMAGE $CMD_ARGS
