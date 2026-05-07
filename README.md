@@ -51,7 +51,7 @@ cargo run -- aws chat "Why is Emberlane so cool?"
 
 Emberlane cost modes map to AWS instance pricing as follows:
 - `economy`: Spot instances, no warm pool
-- `balanced`: Spot instances, warm pool enabled
+- `balanced`: On-demand instances, warm pool enabled
 - `always-on`: On-demand instances, no warm pool
 
 ## AWS Terraform deployment
@@ -88,7 +88,7 @@ graph TD
 - **NVIDIA G5:** The default first CUDA path. Qwen 3.5 9B on `g5.2xlarge` is the recommended starting point.
 - **AWS Inferentia2:** Experimental and workload-dependent. It can be a good fit to benchmark, but it is not universally cheaper than NVIDIA G instances. `inf2.xlarge` is supported for experimental economy configurations, and CUDA/G5 remains the recommended first path.
 - **ASG Warm Pools:** Supported for the `balanced` mode to keep prepared capacity available.
-- **Spot vs On-Demand:** `economy` and `balanced` use Spot instances; `always-on` uses on-demand instances.
+- **Spot vs On-Demand:** `economy` uses Spot instances; `balanced` and `always-on` use on-demand instances.
 
 ---
 

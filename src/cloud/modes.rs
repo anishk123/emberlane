@@ -50,7 +50,7 @@ impl CostMode {
                 "asg_min_size": 0,
                 "asg_desired_capacity": 0,
                 "asg_max_size": 1,
-                "use_spot_instances": true
+                "use_spot_instances": false
             }),
             CostMode::AlwaysOn => json!({
                 "mode": "always-on",
@@ -66,7 +66,7 @@ impl CostMode {
     pub fn rows() -> Vec<Value> {
         vec![
             json!({"mode":"economy","idle_cost_expectation":"lowest","start_expectation":"coldest path","terraform_behavior":"ASG min=0 desired=0 max=1, warm pool disabled, Spot instances"}),
-            json!({"mode":"balanced","idle_cost_expectation":"some storage/EBS or warm-pool related cost","start_expectation":"warmer path when warm pool has capacity","terraform_behavior":"ASG min=0 desired=0 max=1, warm pool enabled, Spot instances"}),
+            json!({"mode":"balanced","idle_cost_expectation":"some storage/EBS or warm-pool related cost","start_expectation":"warmer path when warm pool has capacity","terraform_behavior":"ASG min=0 desired=0 max=1, warm pool enabled, on-demand instances"}),
             json!({"mode":"always-on","idle_cost_expectation":"highest","start_expectation":"fastest response, no scale-to-zero idle state","terraform_behavior":"ASG min=1 desired=1 max=1, warm pool disabled, on-demand instances"}),
         ]
     }

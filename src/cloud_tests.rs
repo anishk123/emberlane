@@ -59,7 +59,7 @@ fn cost_modes_map_to_terraform_values() {
     );
     assert_eq!(
         CostMode::Balanced.terraform_values()["use_spot_instances"],
-        true
+        false
     );
     assert_eq!(
         CostMode::AlwaysOn.terraform_values()["asg_desired_capacity"],
@@ -87,6 +87,7 @@ async fn aws_backend_renders_cuda_and_inf2_tfvars() {
     assert_eq!(vars["accelerator"], "cuda");
     assert_eq!(vars["runtime_pack"], "cuda-vllm");
     assert_eq!(vars["enable_warm_pool"], true);
+    assert_eq!(vars["use_spot_instances"], false);
     assert_eq!(vars["model_id"], "Qwen/Qwen3.5-9B-Instruct");
 
     let inf2 = AwsBackend::load_or_default(Some(PathBuf::from("missing.toml")))
@@ -125,7 +126,7 @@ async fn aws_backend_renders_direct_deploy_profile_region_and_ami() {
     assert_eq!(vars["aws_region"], "us-west-2");
     assert_eq!(vars["ami_id"], "ami-1234567890abcdef0");
     assert_eq!(vars["enable_warm_pool"], true);
-    assert_eq!(vars["use_spot_instances"], true);
+    assert_eq!(vars["use_spot_instances"], false);
 }
 
 #[test]

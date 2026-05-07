@@ -197,7 +197,7 @@ variable "enable_warm_pool" {
 }
 
 variable "use_spot_instances" {
-  description = "Use Spot instances for cost savings. Automatically true for economy/balanced modes, false for always-on."
+  description = "Use Spot instances for cost savings. Automatically true for economy, false for balanced/always-on because Warm Pools require on-demand instances."
   type        = bool
   default     = false
 }

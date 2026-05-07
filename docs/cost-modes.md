@@ -22,7 +22,7 @@ cargo run -- aws modes
 - desired `0`
 - max `1`
 - Warm Pool enabled
-- Spot instances
+- On-demand instances
 - Some storage/EBS/prepared-capacity cost
 - Warmer starts when the pool has capacity
 
@@ -37,3 +37,5 @@ cargo run -- aws modes
 - Fastest response
 
 Emberlane does not claim exact wake latency or cost savings. Use `emberlane aws benchmark` and real pricing inputs before making decisions.
+
+AWS does not allow a Warm Pool on an ASG that requests Spot instances, so `balanced` uses on-demand instances to keep the warm-pool path valid.
