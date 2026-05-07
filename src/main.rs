@@ -145,8 +145,18 @@ enum AwsCommand {
         deployment: Option<PathBuf>,
     },
     Cleanup(AwsCleanupCmd),
-    Models,
-    Modes,
+    Models {
+        #[arg(long)]
+        profile: Option<String>,
+        #[arg(long)]
+        region: Option<String>,
+    },
+    Modes {
+        #[arg(long)]
+        profile: Option<String>,
+        #[arg(long)]
+        region: Option<String>,
+    },
     #[command(hide = true)]
     Wake {
         runtime_id: String,
@@ -160,7 +170,12 @@ enum AwsCommand {
         runtime_id: String,
     },
     #[command(hide = true)]
-    SampleConfig,
+    SampleConfig {
+        #[arg(long)]
+        profile: Option<String>,
+        #[arg(long)]
+        region: Option<String>,
+    },
     Login {
         #[arg(long)]
         profile: Option<String>,
@@ -585,10 +600,10 @@ async fn run_aws_command(
             let region = region.or(Some(backend.config.region.clone()));
             print_json(test_harness::check_aws_credentials(profile, region).await?);
         }
-        AwsCommand::Models => {
+        AwsCommand::Models { .. } => {
             print_json(json!({"models": profiles::rows()?}));
         }
-        AwsCommand::Modes => {
+        AwsCommand::Modes { .. } => {
             print_json(json!({
                 "modes": CostMode::rows(),
                 "caveat": "Benchmark results are workload and region dependent; Emberlane does not promise exact latency."
@@ -739,7 +754,7 @@ async fn run_aws_command(
                 .await?,
             );
         }
-        AwsCommand::SampleConfig => {
+        AwsCommand::SampleConfig { .. } => {
             println!("{}", aws_sample_config());
         }
         AwsCommand::RenderIam { runtime_id } => {
