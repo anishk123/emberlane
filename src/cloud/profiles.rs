@@ -10,6 +10,8 @@ pub struct ModelProfile {
     pub recommended_instance: String,
     pub runtime: String,
     pub status: String,
+    #[serde(default)]
+    pub language_model_only: bool,
     pub max_model_len: u64,
 }
 
@@ -42,7 +44,9 @@ pub fn rows() -> Result<Vec<serde_json::Value>, EmberlaneError> {
                 "accelerator": p.default_accelerator,
                 "recommended_instance": p.recommended_instance,
                 "runtime": p.runtime,
-                "status": p.status
+                "status": p.status,
+                "language_model_only": p.language_model_only,
+                "max_model_len": p.max_model_len
             })
         })
         .collect())

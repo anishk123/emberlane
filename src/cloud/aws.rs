@@ -47,6 +47,10 @@ struct DeploySection {
     model_profile: String,
     mode: String,
     ami_id: String,
+    #[serde(default)]
+    max_model_len: u64,
+    #[serde(default)]
+    language_model_only: bool,
     use_baked_ami: bool,
     public_alb: bool,
     api_key: String,
@@ -201,8 +205,9 @@ impl AwsBackend {
         Ok(self)
     }
 
-    fn to_file(&self) -> AwsFile {
-        AwsFile {
+    fn to_file(&self) -> Result<AwsFile, EmberlaneError> {
+        let profile = profiles::profile(&self.config.model_profile)?;
+        Ok(AwsFile {
             aws: AwsSection {
                 region: self.config.region.clone(),
                 profile: self.config.profile.clone().unwrap_or_default(),
@@ -215,6 +220,8 @@ impl AwsBackend {
                 model_profile: self.config.model_profile.clone(),
                 mode: self.config.mode.to_string(),
                 ami_id: self.config.ami_id.clone(),
+                max_model_len: profile.max_model_len,
+                language_model_only: profile.language_model_only,
                 use_baked_ami: self.config.use_baked_ami,
                 public_alb: self.config.public_alb,
                 api_key: self.config.api_key.clone().unwrap_or_default(),
@@ -232,13 +239,13 @@ impl AwsBackend {
                 gcp_enabled: false,
                 azure_enabled: false,
             },
-        }
+        })
     }
 
     #[allow(dead_code)]
     pub fn default_config_text() -> Result<String, EmberlaneError> {
         let backend = Self::from_config(aws_config_path(), CloudDeployConfig::default());
-        toml::to_string_pretty(&backend.to_file())
+        toml::to_string_pretty(&backend.to_file()?)
             .map_err(|err| EmberlaneError::Internal(format!("failed to render AWS config: {err}")))
     }
 
@@ -468,7 +475,7 @@ impl CloudBackend for AwsBackend {
         if let Some(parent) = self.path.parent() {
             fs::create_dir_all(parent)?;
         }
-        let text = toml::to_string_pretty(&self.to_file()).map_err(|err| {
+        let text = toml::to_string_pretty(&self.to_file()?).map_err(|err| {
             EmberlaneError::Internal(format!("failed to render AWS config: {err}"))
         })?;
         fs::write(&self.path, text)?;
@@ -550,6 +557,11 @@ impl CloudBackend for AwsBackend {
             json!(self.config.model_profile),
         );
         obj.insert("model_id".to_string(), json!(profile.model_id));
+        obj.insert("max_model_len".to_string(), json!(profile.max_model_len));
+        obj.insert(
+            "language_model_only".to_string(),
+            json!(profile.language_model_only),
+        );
         obj.insert(
             "instance_type".to_string(),
             json!(self.config.instance_type),
@@ -658,7 +670,7 @@ impl CloudBackend for AwsBackend {
             })
             .filter(|value| !value.is_empty());
         if let Some(ref endpoint_url) = endpoint_url {
-            let mut rendered = self.to_file();
+            let mut rendered = self.to_file()?;
             rendered.deploy.endpoint_url = endpoint_url.clone();
             fs::write(
                 &self.path,

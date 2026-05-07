@@ -122,7 +122,7 @@ def _wake_asg():
 
 def _wait_for_health():
     deadline = time.time() + int(os.environ.get("FAST_WAIT_SECS", "25"))
-    startup_deadline = time.time() + int(os.environ.get("STARTUP_TIMEOUT_SECS", "180"))
+    startup_deadline = time.time() + int(os.environ.get("STARTUP_TIMEOUT_SECS", "600"))
     deadline = min(deadline, startup_deadline)
     while time.time() < deadline:
         if _healthy():

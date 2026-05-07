@@ -118,6 +118,18 @@ variable "model_id" {
   default     = ""
 }
 
+variable "max_model_len" {
+  description = "Maximum model context length passed to the CUDA runtime."
+  type        = number
+  default     = 4096
+}
+
+variable "language_model_only" {
+  description = "Run the CUDA runtime in language-model-only mode for multimodal models used as text-only chat models."
+  type        = bool
+  default     = false
+}
+
 variable "accelerator" {
   description = "Accelerator family: cuda or inf2."
   type        = string
@@ -253,7 +265,7 @@ variable "fast_wait_secs" {
 variable "startup_timeout_secs" {
   description = "Upper startup timeout passed to WakeBridge."
   type        = number
-  default     = 300
+  default     = 600
 }
 
 variable "retry_after_secs" {

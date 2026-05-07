@@ -25,7 +25,7 @@ Parameters:
     Default: 25
   StartupTimeoutSecs:
     Type: Number
-    Default: 180
+    Default: 600
   FunctionUrlAuthType:
     Type: String
     Default: NONE

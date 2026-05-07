@@ -57,6 +57,8 @@ fn variables_include_required_inputs() {
         "key_name",
         "model_profile",
         "model_id",
+        "max_model_len",
+        "language_model_only",
         "accelerator",
         "runtime_pack",
         "mode",
@@ -133,6 +135,8 @@ fn terraform_resources_include_required_wakebridge_pieces() {
     assert!(user_data.contains("MODEL_PROFILE"));
     assert!(user_data.contains("ARTIFACT_BUCKET"));
     assert!(user_data.contains("S3_NEURON_ARTIFACTS_URI"));
+    assert!(user_data.contains("MAX_MODEL_LEN"));
+    assert!(user_data.contains("LANGUAGE_MODEL_ONLY"));
     assert!(user_data.contains("systemctl enable --now emberlane-runtime.service"));
     assert!(user_data.contains("docker run --rm --name emberlane-vllm"));
 }

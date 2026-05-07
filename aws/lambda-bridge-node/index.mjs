@@ -51,7 +51,7 @@ export async function wakeAsg(client = autoscaling) {
 
 export async function waitForHealth(fetchImpl = fetch) {
   const fastWaitSecs = Number(process.env.FAST_WAIT_SECS || "25");
-  const startupSecs = Number(process.env.STARTUP_TIMEOUT_SECS || "180");
+  const startupSecs = Number(process.env.STARTUP_TIMEOUT_SECS || "600");
   const deadline = Date.now() + Math.min(fastWaitSecs, startupSecs) * 1000;
   while (Date.now() < deadline) {
     if (await healthy(fetchImpl)) return true;

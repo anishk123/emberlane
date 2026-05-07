@@ -35,7 +35,7 @@ Resources:
           HEALTH_PATH: !Ref HealthPath
           MODE: !Ref Mode
           FAST_WAIT_SECS: 25
-          STARTUP_TIMEOUT_SECS: 300
+          STARTUP_TIMEOUT_SECS: 600
           RETRY_AFTER_SECS: 5
           DESIRED_CAPACITY_ON_WAKE: 1
           API_KEY: !Ref ApiKey

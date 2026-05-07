@@ -69,6 +69,8 @@ echo "[emberlane] writing runtime environment"
 cat >/etc/emberlane/inf2.env <<'ENV'
 MODEL_PROFILE=${model_profile}
 MODEL_ID=${model_id}
+MAX_MODEL_LEN=${max_model_len}
+LANGUAGE_MODEL_ONLY=${language_model_only}
 ACCELERATOR=${accelerator}
 RUNTIME_PACK=${runtime_pack}
 RUNTIME_PORT=${runtime_port}
@@ -95,7 +97,11 @@ if [[ "${accelerator}" == "cuda" ]]; then
     echo "[emberlane] Preparing CUDA vLLM service"
     IMAGE="vllm/vllm-openai:latest"
     GPU_FLAGS="--gpus all"
-    CMD_ARGS="--model ${model_id} --host 0.0.0.0 --port 8000"
+    LANGUAGE_MODEL_ONLY_FLAG=""
+    if [[ "${language_model_only}" == "true" ]]; then
+        LANGUAGE_MODEL_ONLY_FLAG="--language-model-only"
+    fi
+    CMD_ARGS="--model ${model_id} --max-model-len ${max_model_len} ${LANGUAGE_MODEL_ONLY_FLAG} --host 0.0.0.0 --port 8000"
     
     cat >/etc/systemd/system/emberlane-runtime.service <<UNIT
 [Unit]
@@ -129,7 +135,7 @@ elif [[ "${accelerator}" == "inf2" ]]; then
     
     # Official AWS Neuron vLLM Image
     IMAGE="public.ecr.aws/neuron/pytorch-inference-vllm-neuronx:0.16.0-neuronx-py312-sdk2.29.1-ubuntu24.04"
-    CMD_ARGS="python3 -m vllm.entrypoints.openai.api_server --model ${model_id} --max-model-len 4096 --block-size 128 --host 0.0.0.0 --port 8000"
+    CMD_ARGS="python3 -m vllm.entrypoints.openai.api_server --model ${model_id} --max-model-len ${max_model_len} --block-size 128 --host 0.0.0.0 --port 8000"
 
     cat >/etc/systemd/system/emberlane-runtime.service <<UNIT
 [Unit]
@@ -151,7 +157,7 @@ ExecStart=/usr/bin/docker run --rm --name emberlane-vllm \
   -e HF_TOKEN=\$${HF_TOKEN} \
   $IMAGE python3 -m vllm.entrypoints.openai.api_server \
   --model ${model_id} \
-  --max-model-len 1024 \
+  --max-model-len ${max_model_len} \
   --block-size 16 \
   --host 0.0.0.0 --port 8000
 ExecStop=/usr/bin/docker stop emberlane-vllm

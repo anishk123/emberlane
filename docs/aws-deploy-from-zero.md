@@ -176,8 +176,11 @@ The first boot can include:
 - Neuron graph compilation.
 - A proxy on port `8080` that serves `/health` and forwards `/v1/*` to the model server on port `8000`.
 - Health check transition from `503` to `200`.
+- For Qwen3.5 text-only serving on CUDA/G5, Emberlane passes a profile-specific `--max-model-len` and `--language-model-only` so the model fits the default `g5.2xlarge` path more reliably.
 
 This can take several minutes. Warm Pools and baked AMIs reduce repeated work, but they do not guarantee a fixed wake time.
+
+`startup_timeout_secs` is the wake-and-wait budget, not the ASG idle shutdown timer. If you are tuning responsiveness, adjust the startup timeout for slow model loads and the idle alarm separately for scale-to-zero behavior.
 
 ## Warm Pool Behavior
 

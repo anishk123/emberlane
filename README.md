@@ -149,6 +149,8 @@ Each profile describes one model and the hardware Emberlane recommends for it.
 
 The default AWS CUDA path is `qwen35_9b` on `g5.2xlarge` in `balanced` mode. That is the recommended first path for public release.
 
+That default is tuned for text-only serving: Emberlane passes the profile-specific max context length and `--language-model-only` so Qwen3.5 can run more reliably on the single-GPU `g5.2xlarge` path.
+
 Inf2/Neuron is supported for experimental evaluation, but it is not presented as universally cheaper. Use it when you want to benchmark the hardware tradeoffs yourself.
 
 For multi-model comparison:

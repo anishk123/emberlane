@@ -41,6 +41,8 @@ resource "aws_launch_template" "runtime" {
   user_data = base64encode(templatefile("${path.module}/user_data.sh.tftpl", {
     model_profile               = var.model_profile
     model_id                    = var.model_id
+    max_model_len               = tostring(var.max_model_len)
+    language_model_only         = tostring(var.language_model_only)
     accelerator                 = var.accelerator
     runtime_pack                = var.runtime_pack
     artifact_bucket             = local.artifact_bucket_name

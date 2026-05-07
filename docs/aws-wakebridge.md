@@ -39,7 +39,7 @@ enabled = true
 mode = "fast"
 base_url = "http://your-alb-dns-name"
 health_path = "/health"
-startup_timeout_secs = 180
+startup_timeout_secs = 600
 fast_wait_secs = 25
 slow_retry_after_secs = 5
 idle_ttl_secs = 300
@@ -70,6 +70,8 @@ In fast mode, Emberlane checks `base_url + health_path`. If unhealthy, it calls 
 In slow mode, Emberlane triggers the same ASG wake and returns the warming response quickly.
 
 Sleep calls `set-desired-capacity` with `desired_capacity_on_sleep`, usually `0`. Emberlane does not terminate individual EC2 instances manually.
+
+Important distinction: `startup_timeout_secs` is for the wake-and-wait path, not for idle shutdown. Idle scale-down is controlled by the ASG request-count alarm.
 
 ## Runtime Contract
 
