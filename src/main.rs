@@ -114,12 +114,30 @@ enum AwsCommand {
     },
     Status {
         runtime_id: Option<String>,
+        #[arg(long)]
+        profile: Option<String>,
+        #[arg(long)]
+        region: Option<String>,
     },
     Chat {
         message: String,
+        #[arg(long)]
+        profile: Option<String>,
+        #[arg(long)]
+        region: Option<String>,
     },
-    Benchmark,
-    CostReport,
+    Benchmark {
+        #[arg(long)]
+        profile: Option<String>,
+        #[arg(long)]
+        region: Option<String>,
+    },
+    CostReport {
+        #[arg(long)]
+        profile: Option<String>,
+        #[arg(long)]
+        region: Option<String>,
+    },
     PrintConfig,
     SmokeTest,
     Diagnose {
@@ -671,16 +689,34 @@ async fn run_aws_command(
             }
             print_json(backend.destroy(auto_approve).await?);
         }
-        AwsCommand::Chat { message } => {
-            let backend = AwsBackend::load_or_default(None)?;
+        AwsCommand::Chat { message, profile, region } => {
+            let mut backend = AwsBackend::load_or_default(None)?;
+            if let Some(profile) = profile {
+                backend.config.profile = Some(profile);
+            }
+            if let Some(region) = region {
+                backend.config.region = region;
+            }
             print_json(backend.chat(&message).await?);
         }
-        AwsCommand::Benchmark => {
-            let backend = AwsBackend::load_or_default(None)?;
+        AwsCommand::Benchmark { profile, region } => {
+            let mut backend = AwsBackend::load_or_default(None)?;
+            if let Some(profile) = profile {
+                backend.config.profile = Some(profile);
+            }
+            if let Some(region) = region {
+                backend.config.region = region;
+            }
             print_json(backend.benchmark().await?);
         }
-        AwsCommand::CostReport => {
-            let backend = AwsBackend::load_or_default(None)?;
+        AwsCommand::CostReport { profile, region } => {
+            let mut backend = AwsBackend::load_or_default(None)?;
+            if let Some(profile) = profile {
+                backend.config.profile = Some(profile);
+            }
+            if let Some(region) = region {
+                backend.config.region = region;
+            }
             print_json(backend.cost_report().await?);
         }
         AwsCommand::SmokeTest => {
@@ -714,12 +750,18 @@ async fn run_aws_command(
                 .ok_or_else(|| EmberlaneError::RuntimeNotFound(runtime_id.clone()))?;
             print_json(render_aws_iam_policy(&runtime)?);
         }
-        AwsCommand::Status { runtime_id } => {
+        AwsCommand::Status { runtime_id, profile, region } => {
             if let Some(runtime_id) = runtime_id {
                 let router = local_router(config)?;
                 print_json(router.aws_status(&runtime_id).await?);
             } else {
-                let backend = AwsBackend::load_or_default(None)?;
+                let mut backend = AwsBackend::load_or_default(None)?;
+                if let Some(profile) = profile {
+                    backend.config.profile = Some(profile);
+                }
+                if let Some(region) = region {
+                    backend.config.region = region;
+                }
                 print_json(backend.status().await?);
             }
         }
