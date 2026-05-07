@@ -101,7 +101,7 @@ if [[ "${accelerator}" == "cuda" ]]; then
     if [[ "${language_model_only}" == "true" ]]; then
         LANGUAGE_MODEL_ONLY_FLAG="--language-model-only"
     fi
-    CMD_ARGS="--model ${model_id} --max-model-len ${max_model_len} ${LANGUAGE_MODEL_ONLY_FLAG} --host 0.0.0.0 --port 8000"
+    CMD_ARGS="--model ${model_id} --max-model-len ${max_model_len} $LANGUAGE_MODEL_ONLY_FLAG --host 0.0.0.0 --port 8000"
     
     cat >/etc/systemd/system/emberlane-runtime.service <<UNIT
 [Unit]
