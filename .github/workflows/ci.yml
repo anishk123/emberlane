@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  rust-and-terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Rust format
+        run: cargo fmt -- --check
+
+      - name: Rust tests
+        run: cargo test
+
+      - name: Rust clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Install Terraform
+        if: hashFiles('infra/terraform/*.tf') != ''
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+
+      - name: Terraform format
+        if: hashFiles('infra/terraform/*.tf') != ''
+        run: terraform fmt -check -recursive infra/terraform
+
+      - name: Terraform validate
+        if: hashFiles('infra/terraform/*.tf') != ''
+        run: |
+          terraform -chdir=infra/terraform init -backend=false
+          terraform -chdir=infra/terraform validate
+        env:
+          AWS_ACCESS_KEY_ID: dummy
+          AWS_SECRET_ACCESS_KEY: dummy
+          AWS_REGION: us-west-2
+          AWS_DEFAULT_REGION: us-west-2

@@ -1,0 +1,28 @@
+[[cases]]
+name = "tiny-demo-cuda-economy"
+model = "tiny_demo"
+accelerator = "cuda"
+instance = "g4dn.xlarge"
+mode = "economy"
+
+[[cases]]
+name = "llama-cuda-economy"
+model = "llama31_8b"
+accelerator = "cuda"
+instance = "g5.xlarge"
+mode = "economy"
+
+[[cases]]
+name = "qwen-cuda-balanced"
+model = "qwen25_7b"
+accelerator = "cuda"
+instance = "g5.xlarge"
+mode = "balanced"
+
+[[cases]]
+name = "llama-inf2-balanced"
+model = "llama32_1b_inf2"
+accelerator = "inf2"
+instance = "inf2.xlarge"
+mode = "balanced"
+experimental = true

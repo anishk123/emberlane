@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Emberlane Simple Chat</title>
+    <style>
+      body { font-family: ui-sans-serif, system-ui, sans-serif; max-width: 760px; margin: 40px auto; padding: 0 16px; line-height: 1.5; }
+      label { display: block; margin-top: 12px; font-weight: 700; }
+      input, textarea, button { width: 100%; box-sizing: border-box; padding: 10px; margin-top: 6px; }
+      button { cursor: pointer; font-weight: 700; }
+      pre { background: #f4f1ea; padding: 16px; overflow: auto; }
+    </style>
+  </head>
+  <body>
+    <h1>Emberlane Simple Chat</h1>
+    <p>Plain HTML demo for a local Emberlane server.</p>
+
+    <label>Server URL</label>
+    <input id="server" value="http://127.0.0.1:8787" />
+
+    <label>API key</label>
+    <input id="key" value="dev-secret" />
+
+    <label>Runtime</label>
+    <input id="runtime" value="echo" />
+
+    <label>Message</label>
+    <textarea id="message">hello</textarea>
+
+    <button id="send">Send</button>
+    <pre id="out">Ready.</pre>
+
+    <script>
+      document.querySelector("#send").addEventListener("click", async () => {
+        const server = document.querySelector("#server").value.replace(/\/$/, "");
+        const key = document.querySelector("#key").value;
+        const runtime = document.querySelector("#runtime").value;
+        const message = document.querySelector("#message").value;
+        const out = document.querySelector("#out");
+        out.textContent = "Sending...";
+        try {
+          const response = await fetch(`${server}/v1/chat/${runtime}`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${key}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              messages: [{ role: "user", content: message }],
+              files: []
+            })
+          });
+          out.textContent = JSON.stringify(await response.json(), null, 2);
+        } catch (err) {
+          out.textContent = String(err);
+        }
+      });
+    </script>
+  </body>
+</html>

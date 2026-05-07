@@ -1,0 +1,16 @@
+{
+  "version": "2.0",
+  "rawPath": "/v1/chat/completions",
+  "headers": {
+    "authorization": "Bearer dev-secret",
+    "content-type": "application/json"
+  },
+  "requestContext": {
+    "http": {
+      "method": "POST",
+      "path": "/v1/chat/completions"
+    }
+  },
+  "body": "{\"model\":\"echo\",\"messages\":[{\"role\":\"user\",\"content\":\"hello\"}],\"stream\":false}",
+  "isBase64Encoded": false
+}

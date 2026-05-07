@@ -1,0 +1,18 @@
+[Unit]
+Description=Emberlane Inf2 OpenAI-compatible runtime
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/emberlane/inf2.env
+WorkingDirectory=/opt/emberlane/inf2-runtime
+ExecStart=/opt/emberlane/inf2-runtime/start-server.sh
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target

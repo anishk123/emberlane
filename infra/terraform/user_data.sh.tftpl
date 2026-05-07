@@ -1,0 +1,154 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# 1. Logging and basic setup
+mkdir -p /etc/emberlane /opt/emberlane /var/log/emberlane
+exec > >(tee -a /var/log/emberlane/bootstrap.log) 2>&1
+
+echo "[emberlane] ========================================"
+echo "[emberlane] Bootstrap started at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+# 2. OS Detection and Lightweight Package Install
+if [[ -f /etc/os-release ]]; then
+    . /etc/os-release
+    OS_ID=$ID
+else
+    OS_ID="unknown"
+fi
+
+echo "[emberlane] OS detected: $OS_ID ($${VERSION_ID:-unknown})"
+
+case "$OS_ID" in
+    ubuntu)
+        PM="apt-get"
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update -y
+        deps=(curl jq unzip)
+        if ! command -v docker >/dev/null 2>&1; then
+            deps+=(docker.io)
+        fi
+        apt-get install -y "${deps[@]}" || true # Don't fail if some deps (like docker) are held/pre-installed
+        systemctl enable --now docker
+        ;;
+    amzn|al2023)
+        PM="dnf"
+        deps=(curl jq unzip)
+        if ! command -v docker >/dev/null 2>&1; then
+            deps+=(docker)
+        fi
+        dnf install -y "${deps[@]}" 
+        systemctl enable --now docker
+        ;;
+    *)
+        echo "[emberlane] WARNING: Unsupported OS $OS_ID. Attempting to proceed with basic tools."
+        ;;
+esac
+
+# 3. Preflight Diagnostic Block
+echo "[emberlane] --- PREFLIGHT LOGS ---"
+echo "AMI_ID: $(curl -s http://169.254.169.254/latest/meta-data/ami-id)"
+echo "INSTANCE_TYPE: $(curl -s http://169.254.169.254/latest/meta-data/instance-type)"
+echo "UNAME: $(uname -a)"
+echo "OS_RELEASE: $(cat /etc/os-release | grep PRETTY_NAME)"
+docker --version || echo "docker not found"
+
+if [[ "${accelerator}" == "cuda" ]]; then
+    nvidia-smi || { echo "ERROR: nvidia-smi failed on CUDA instance"; exit 1; }
+elif [[ "${accelerator}" == "inf2" ]]; then
+    if command -v neuron-ls >/dev/null 2>&1; then
+        neuron-ls
+    else
+        echo "ERROR: neuron-ls not found on Inf2 instance"
+        exit 1
+    fi
+fi
+echo "[emberlane] --- PREFLIGHT COMPLETE ---"
+
+# 4. Environment and Secrets
+echo "[emberlane] writing runtime environment"
+cat >/etc/emberlane/inf2.env <<'ENV'
+MODEL_PROFILE=${model_profile}
+MODEL_ID=${model_id}
+ACCELERATOR=${accelerator}
+RUNTIME_PACK=${runtime_pack}
+RUNTIME_PORT=${runtime_port}
+AWS_REGION=${aws_region}
+ENV
+chmod 0600 /etc/emberlane/inf2.env
+
+if command -v aws >/dev/null 2>&1; then
+  if [[ -n "${hf_token_ssm_parameter_name}" ]]; then
+    echo "[emberlane] loading HF token from SSM"
+    HF_TOKEN_VALUE="$(aws ssm get-parameter --name "${hf_token_ssm_parameter_name}" --with-decryption --query Parameter.Value --output text --region "${aws_region}")"
+    printf 'HF_TOKEN=%q\n' "$HF_TOKEN_VALUE" >>/etc/emberlane/inf2.env
+  fi
+fi
+
+# 5. Runtime Launch Logic
+if [[ "${accelerator}" == "cuda" ]]; then
+    echo "[emberlane] Preparing CUDA vLLM service"
+    IMAGE="vllm/vllm-openai:latest"
+    GPU_FLAGS="--gpus all"
+    CMD_ARGS="--model ${model_id} --host 0.0.0.0 --port 8000"
+    
+    cat >/etc/systemd/system/emberlane-runtime.service <<UNIT
+[Unit]
+Description=Emberlane CUDA Runtime
+After=docker.service
+Wants=docker.service
+
+[Service]
+EnvironmentFile=/etc/emberlane/inf2.env
+Restart=always
+ExecStartPre=-/usr/bin/docker stop emberlane-vllm
+ExecStartPre=-/usr/bin/docker rm emberlane-vllm
+ExecStart=/usr/bin/docker run --rm --name emberlane-vllm \
+  $GPU_FLAGS --shm-size=10.24gb \
+  -p ${runtime_port}:8000 \
+  -e HF_TOKEN=\$${HF_TOKEN} \
+  $IMAGE $CMD_ARGS
+ExecStop=/usr/bin/docker stop emberlane-vllm
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+elif [[ "${accelerator}" == "inf2" ]]; then
+    echo "[emberlane] Preparing Inf2 Neuron vLLM service"
+    # For Inf2, we need to enumerate devices
+    NEURON_DEVICES=""
+    for dev in /dev/neuron*; do
+        NEURON_DEVICES="$NEURON_DEVICES --device $dev:$dev"
+    done
+    
+    # Official AWS Neuron vLLM Image
+    IMAGE="public.ecr.aws/neuron/pytorch-inference-vllm-neuronx:0.16.0-neuronx-py312-sdk2.29.1-ubuntu24.04"
+    CMD_ARGS="--model ${model_id} --max-model-len 4096 --host 0.0.0.0 --port 8000"
+
+    cat >/etc/systemd/system/emberlane-runtime.service <<UNIT
+[Unit]
+Description=Emberlane Inf2 Runtime
+After=docker.service
+Wants=docker.service
+
+[Service]
+EnvironmentFile=/etc/emberlane/inf2.env
+Restart=always
+ExecStartPre=-/usr/bin/docker stop emberlane-vllm
+ExecStartPre=-/usr/bin/docker rm emberlane-vllm
+ExecStart=/usr/bin/docker run --rm --name emberlane-vllm \
+  $NEURON_DEVICES \
+  -p ${runtime_port}:8000 \
+  -e HF_TOKEN=\$${HF_TOKEN} \
+  $IMAGE $CMD_ARGS
+ExecStop=/usr/bin/docker stop emberlane-vllm
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+fi
+
+systemctl daemon-reload
+systemctl enable --now emberlane-runtime.service
+
+echo "[emberlane] Bootstrap complete."

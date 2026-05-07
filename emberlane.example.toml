@@ -1,0 +1,112 @@
+[server]
+host = "127.0.0.1"
+port = 8787
+api_key = "dev-secret"
+data_dir = ".emberlane"
+default_runtime_id = "echo"
+default_ollama_model = "llama3.2:1b"
+
+[storage]
+backend = "local"
+inline_file_max_bytes = 200000
+
+[storage.local]
+data_dir = ".emberlane"
+
+# [storage.s3]
+# bucket = "my-emberlane-artifacts"
+# prefix = "uploads/"
+# region = "us-west-2"
+# aws_cli = "aws"
+# profile = ""
+# presign_downloads = true
+# presign_expires_secs = 900
+# pass_s3_uri = true
+#
+# To use S3, set:
+# [storage]
+# backend = "s3"
+# inline_file_max_bytes = 200000
+
+[[runtimes]]
+id = "echo"
+name = "Echo Runtime"
+provider = "local_process"
+enabled = true
+mode = "fast"
+base_url = "http://127.0.0.1:9001"
+health_path = "/health"
+startup_timeout_secs = 20
+fast_wait_secs = 10
+slow_retry_after_secs = 2
+idle_ttl_secs = 300
+max_concurrency = 4
+
+[runtimes.config]
+command = "python"
+args = ["examples/echo-runtime/server.py"]
+cwd = "."
+env = { PORT = "9001" }
+
+[[runtimes]]
+id = "ollama"
+name = "Local Ollama"
+provider = "ollama"
+enabled = true
+mode = "fast"
+base_url = "http://127.0.0.1:11434"
+health_path = "/api/tags"
+startup_timeout_secs = 20
+fast_wait_secs = 8
+slow_retry_after_secs = 2
+idle_ttl_secs = 300
+max_concurrency = 2
+
+[runtimes.config]
+command = "ollama"
+args = ["serve"]
+model = "llama3.2:1b"
+
+# [[runtimes]]
+# id = "aws-echo"
+# name = "AWS Echo Runtime"
+# provider = "aws_asg"
+# enabled = true
+# mode = "fast"
+# base_url = "http://your-alb-dns-name"
+# health_path = "/health"
+# startup_timeout_secs = 180
+# fast_wait_secs = 25
+# slow_retry_after_secs = 5
+# idle_ttl_secs = 300
+# max_concurrency = 2
+#
+# [runtimes.config]
+# region = "us-west-2"
+# asg_name = "emberlane-echo-asg"
+# desired_capacity_on_wake = 1
+# desired_capacity_on_sleep = 0
+# aws_cli = "aws"
+# profile = ""
+# warm_pool_expected = true
+
+# [[runtimes]]
+# id = "inf2-llama"
+# name = "Inf2 Llama Runtime"
+# provider = "aws_asg"
+# enabled = true
+# mode = "fast"
+# base_url = "http://your-alb-dns-name"
+# health_path = "/health"
+# startup_timeout_secs = 300
+# fast_wait_secs = 25
+# slow_retry_after_secs = 5
+# idle_ttl_secs = 300
+# max_concurrency = 1
+#
+# [runtimes.config]
+# region = "us-west-2"
+# asg_name = "emberlane-inf2-llama-asg"
+# desired_capacity_on_wake = 1
+# desired_capacity_on_sleep = 0
+# warm_pool_expected = true

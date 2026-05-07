@@ -1,0 +1,27 @@
+import importlib.util
+import pathlib
+import unittest
+
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+SPEC = importlib.util.spec_from_file_location("render_env", ROOT / "scripts" / "render-env.py")
+render_env = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(render_env)
+
+
+class RenderEnvTests(unittest.TestCase):
+    def test_llama_env(self):
+        models = render_env.load_models(ROOT / "models.yaml")
+        env = render_env.profile_env(models, "llama32_1b")
+        self.assertEqual(env["MODEL_ID"], "meta-llama/Llama-3.2-1B")
+        self.assertEqual(env["DEVICE"], "neuron")
+        self.assertEqual(env["STATUS"], "validated_target")
+
+    def test_model_id_override(self):
+        models = render_env.load_models(ROOT / "models.yaml")
+        env = render_env.profile_env(models, "llama32_1b", "custom/model")
+        self.assertEqual(env["MODEL_ID"], "custom/model")
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,0 +1,56 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Emberlane Node.js streaming Lambda WakeBridge.
+
+Parameters:
+  AsgName:
+    Type: String
+  BaseUrl:
+    Type: String
+  HealthPath:
+    Type: String
+    Default: /health
+  ApiKey:
+    Type: String
+    Default: ""
+    NoEcho: true
+  Mode:
+    Type: String
+    Default: fast
+    AllowedValues: [fast, slow]
+
+Resources:
+  StreamingWakeBridgeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs20.x
+      Handler: index.handler
+      CodeUri: .
+      Timeout: 900
+      MemorySize: 512
+      Environment:
+        Variables:
+          ASG_NAME: !Ref AsgName
+          BASE_URL: !Ref BaseUrl
+          HEALTH_PATH: !Ref HealthPath
+          MODE: !Ref Mode
+          FAST_WAIT_SECS: 25
+          STARTUP_TIMEOUT_SECS: 300
+          RETRY_AFTER_SECS: 5
+          DESIRED_CAPACITY_ON_WAKE: 1
+          API_KEY: !Ref ApiKey
+      FunctionUrlConfig:
+        AuthType: NONE
+        InvokeMode: RESPONSE_STREAM
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - autoscaling:SetDesiredCapacity
+                - autoscaling:DescribeAutoScalingGroups
+                - autoscaling:DescribeWarmPool
+              Resource: "*"
+
+Outputs:
+  FunctionUrl:
+    Value: !GetAtt StreamingWakeBridgeFunctionUrl.FunctionUrl

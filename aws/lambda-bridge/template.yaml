@@ -1,0 +1,69 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Emberlane Lambda WakeBridge for an Auto Scaling Group backed runtime.
+Metadata:
+  Notes: "Python bridge buffers responses. Use aws/lambda-bridge-node for response streaming where supported."
+
+Parameters:
+  AsgName:
+    Type: String
+  BaseUrl:
+    Type: String
+  HealthPath:
+    Type: String
+    Default: /health
+  ApiKey:
+    Type: String
+    Default: ""
+    NoEcho: true
+  Mode:
+    Type: String
+    Default: fast
+    AllowedValues: [fast, slow]
+  FastWaitSecs:
+    Type: Number
+    Default: 25
+  StartupTimeoutSecs:
+    Type: Number
+    Default: 180
+  FunctionUrlAuthType:
+    Type: String
+    Default: NONE
+    AllowedValues: [NONE, AWS_IAM]
+
+Resources:
+  WakeBridgeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.12
+      Handler: app.handler
+      CodeUri: .
+      Timeout: 60
+      MemorySize: 512
+      Environment:
+        Variables:
+          ASG_NAME: !Ref AsgName
+          BASE_URL: !Ref BaseUrl
+          HEALTH_PATH: !Ref HealthPath
+          MODE: !Ref Mode
+          FAST_WAIT_SECS: !Ref FastWaitSecs
+          STARTUP_TIMEOUT_SECS: !Ref StartupTimeoutSecs
+          RETRY_AFTER_SECS: 5
+          DESIRED_CAPACITY_ON_WAKE: 1
+          DESIRED_CAPACITY_ON_SLEEP: 0
+          API_KEY: !Ref ApiKey
+      FunctionUrlConfig:
+        AuthType: !Ref FunctionUrlAuthType
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - autoscaling:SetDesiredCapacity
+                - autoscaling:DescribeAutoScalingGroups
+                - autoscaling:DescribeWarmPool
+              Resource: "*"
+
+Outputs:
+  FunctionUrl:
+    Description: Lambda Function URL for the WakeBridge.
+    Value: !GetAtt WakeBridgeFunctionUrl.FunctionUrl

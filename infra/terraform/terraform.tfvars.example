@@ -1,0 +1,53 @@
+# Emberlane dev/test deployment.
+# Copy to terraform.tfvars if you want to pin overrides for direct Terraform use.
+
+app_name    = "emberlane"
+environment = "dev"
+aws_region  = "us-west-2"
+# aws_profile = "default"
+
+# Optional override: Emberlane auto-selects a sensible AMI in `cargo run -- aws deploy`.
+# Uncomment and set a specific AMI only if you want to pin or override the default.
+# ami_id = "ami-REPLACE_ME"
+
+# Dev default is a public ALB plus non-VPC Lambda Function URL.
+# Lambda has AWS-managed public egress, so 0.0.0.0/0 is the simplest dev path.
+# For tighter ingress, use a different gateway/networking plan.
+allowed_ingress_cidr_blocks = ["0.0.0.0/0"]
+public_alb                  = true
+
+accelerator         = "cuda"
+runtime_pack        = "cuda-vllm"
+instance_type       = "g5.xlarge"
+model_profile       = "llama31_8b"
+model_id            = "meta-llama/Llama-3.1-8B-Instruct"
+mode                = "economy"
+runtime_port        = 8080
+root_volume_size_gb = 200
+use_baked_ami       = false
+
+asg_min_size         = 0
+asg_desired_capacity = 0
+asg_max_size         = 1
+enable_warm_pool     = true
+warm_pool_pool_state = "Stopped"
+
+deploy_lambda_wakebridge = true
+lambda_runtime           = "nodejs20.x"
+wake_mode                = "fast"
+fast_wait_secs           = 25
+startup_timeout_secs     = 300
+retry_after_secs         = 5
+
+# Strongly recommended if function_url_auth_type = "NONE".
+api_key = "replace-with-a-long-random-token"
+
+create_artifact_bucket   = true
+artifact_prefix          = "emberlane/"
+enable_s3_artifact_sync  = true
+sync_artifacts_back      = false
+neuron_artifacts_s3_prefix = "neuron-artifacts/"
+
+# Optional Hugging Face token sources for gated models.
+# hf_token_secret_arn = "arn:aws:secretsmanager:us-west-2:123456789012:secret:hf-token"
+# hf_token_ssm_parameter_name = "/emberlane/hf-token"
