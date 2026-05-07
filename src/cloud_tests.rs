@@ -185,6 +185,7 @@ fn examples_and_readme_are_cleaned_to_active_surface() {
         assert!(!readme.to_lowercase().contains(forbidden));
     }
     assert!(readme.contains("Supported Interfaces"));
+    assert!(readme.contains("How Defaults Work"));
     assert!(readme.contains(
         "CLI for local setup, AWS deploy, benchmarking, cost reports, diagnostics, and cleanup"
     ));
@@ -192,6 +193,7 @@ fn examples_and_readme_are_cleaned_to_active_surface() {
     assert!(readme.contains("OpenAI-compatible chat endpoints"));
     assert!(readme.contains("AWS Quickstart"));
     assert!(readme.contains("AWS Terraform deployment"));
+    assert!(readme.contains("aws print-config"));
     assert!(readme.contains("File Storage And Multi-Document Chat"));
     assert!(readme.contains("Planned"));
     assert!(readme.contains("Python SDK"));
@@ -199,6 +201,7 @@ fn examples_and_readme_are_cleaned_to_active_surface() {
     assert!(readme.contains("Not Implemented Yet"));
     assert!(readme.contains("Architecture"));
     assert!(readme.contains("Implemented Now"));
+    assert!(readme.contains("recommended first path"));
 }
 
 #[test]

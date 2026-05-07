@@ -20,6 +20,25 @@ Emberlane is a local-first LLM gateway with one shipped CLI binary. It can:
 - serve an HTTP and OpenAI-compatible API
 - deploy an AWS scale-to-zero stack with Terraform
 
+## How Defaults Work
+
+Emberlane is designed to be useful by default and adjustable when you need it.
+
+- `profiles/models.toml` defines the model profiles Emberlane knows about.
+- `emberlane.toml` stores local defaults for the CLI, local storage, and runtimes.
+- `aws/emberlane.aws.toml` stores AWS deploy defaults such as region, profile, model, mode, and endpoint.
+- CLI flags override config when you want a one-off change.
+
+Recommended AWS first path:
+
+- model: `qwen35_9b`
+- instance: `g5.2xlarge`
+- mode: `balanced`
+
+Use `cargo run -- aws models` to inspect profiles, `cargo run -- aws modes` to inspect cost modes, and `cargo run -- aws print-config` to inspect the current AWS defaults before you deploy.
+
+If you want to compare multiple models, deploy one profile at a time and use `aws benchmark` and `aws cost-report` to compare the real tradeoffs.
+
 ## Supported Interfaces
 
 - CLI for local setup, AWS deploy, benchmarking, cost reports, diagnostics, and cleanup
@@ -49,6 +68,7 @@ cargo run -- aws credentials check --profile your-profile
 cargo run -- aws init --profile your-profile
 cargo run -- aws models
 cargo run -- aws modes
+cargo run -- aws print-config
 cargo run -- aws deploy --profile your-profile --mode balanced
 cargo run -- aws chat "Explain scale-to-zero inference" --profile your-profile
 cargo run -- aws benchmark --profile your-profile
@@ -57,6 +77,10 @@ cargo run -- aws destroy --profile your-profile
 ```
 
 If you want a guided deploy path, Emberlane renders Terraform variables, applies the stack, and stores the resolved endpoint in `aws/emberlane.aws.toml`.
+
+## AWS Terraform Deployment
+
+For repeatable AWS setup, see [docs/aws-deploy-from-zero.md](docs/aws-deploy-from-zero.md). The CLI renders Terraform variables, runs plan/apply, and manages destroy for you.
 
 ## File Storage And Multi-Document Chat
 
@@ -91,19 +115,29 @@ cargo run -- chat-file ollama <file_id> "summarize this"
 
 Use `cargo run -- aws models` to list the available model profiles.
 
-The default AWS CUDA path is:
+Each profile describes one model and the hardware Emberlane recommends for it.
 
-- `qwen35_9b`
-- `g5.2xlarge`
-- `balanced`
+The default AWS CUDA path is `qwen35_9b` on `g5.2xlarge` in `balanced` mode. That is the recommended first path for public release.
 
-That is the recommended first path for public release. Inf2/Neuron is supported for experimental evaluation, but it is not presented as universally cheaper.
+Inf2/Neuron is supported for experimental evaluation, but it is not presented as universally cheaper. Use it when you want to benchmark the hardware tradeoffs yourself.
+
+For multi-model comparison:
+
+- pick one model profile
+- deploy it
+- benchmark it
+- destroy it if you are done
+- repeat with another profile
 
 ## Cost Modes
 
-- `economy`: Spot instances, no warm pool, lowest idle cost
-- `balanced`: On-demand instances, warm pool enabled, faster wake with some idle overhead
-- `always-on`: On-demand instances, no warm pool, fastest steady-state response
+| Mode | Default capacity | Warm pool | Pricing | Good for |
+| --- | --- | --- | --- | --- |
+| `economy` | min `0`, desired `0`, max `1` | Disabled | Spot | Lowest idle cost |
+| `balanced` | min `0`, desired `0`, max `1` | Enabled | On-demand | Warmer starts and easier reuse |
+| `always-on` | min `1`, desired `1`, max `1` | Disabled | On-demand | Fastest steady-state response |
+
+These are defaults, not hard limits. You can override them in config or on the command line when you need something specific.
 
 ## MCP Support
 
