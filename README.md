@@ -147,6 +147,8 @@ Use `cargo run -- aws models` to list the available model profiles.
 
 Each profile describes one model and the hardware Emberlane recommends for it.
 
+Some profile keys end with `_economy` for historical reasons. Those are tighter-memory model profiles, not the AWS cost mode named `economy`.
+
 The default AWS CUDA path is `qwen35_9b` on `g5.2xlarge` in `balanced` mode. That is the recommended first path for public release.
 
 That default is tuned for text-only serving: Emberlane passes the profile-specific max context length, `--language-model-only`, and the Qwen3 reasoning parser so Qwen3.5 follows the official vLLM serving shape on the single-GPU `g5.2xlarge` path.

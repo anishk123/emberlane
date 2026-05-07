@@ -763,7 +763,16 @@ async fn run_aws_command(
 
                 let prompts: Vec<String> = p_list
                     .iter()
-                    .map(|(name, p)| format!("{} ({})", p.display_name, name))
+                    .map(|(name, p)| {
+                        if name.ends_with("_economy") {
+                            format!(
+                                "{} ({}) [tight-memory profile, not AWS cost mode]",
+                                p.display_name, name
+                            )
+                        } else {
+                            format!("{} ({})", p.display_name, name)
+                        }
+                    })
                     .collect();
 
                 let selection = dialoguer::Select::new()

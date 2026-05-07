@@ -44,6 +44,16 @@ fn model_profiles_parse_and_include_cuda_first_profiles() {
     assert_eq!(qwen.reasoning_parser.as_deref(), Some("qwen3"));
     assert_eq!(qwen.max_model_len, 4096);
     assert_eq!(profiles.get("llama32_1b_inf2").unwrap().status, "stable");
+    assert!(profiles
+        .get("llama32_1b_inf2_economy")
+        .unwrap()
+        .display_name
+        .contains("Tight Memory"));
+    assert!(profiles
+        .get("qwen25_15b_inf2_economy")
+        .unwrap()
+        .display_name
+        .contains("Tight Memory"));
 }
 
 #[test]
@@ -254,6 +264,7 @@ fn examples_and_readme_are_cleaned_to_active_surface() {
     assert!(readme.contains("Architecture"));
     assert!(readme.contains("Implemented Now"));
     assert!(readme.contains("recommended first path"));
+    assert!(readme.contains("tighter-memory model profiles, not the AWS cost mode named `economy`"));
 }
 
 #[test]

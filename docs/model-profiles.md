@@ -17,6 +17,8 @@ Profiles map a friendly name to model ID, default accelerator, recommended insta
 
 Emberlane does not claim a model is validated unless the repo includes a real validation record.
 
+Some profile keys end with `_economy` for historical reasons. Those are not AWS cost modes; they are tighter-memory Inf2 model profiles.
+
 Current default CUDA first path:
 
 - `qwen35_9b` on `g5.2xlarge`

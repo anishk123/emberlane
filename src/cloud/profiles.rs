@@ -49,6 +49,11 @@ pub fn rows() -> Result<Vec<serde_json::Value>, EmberlaneError> {
                 "status": p.status,
                 "language_model_only": p.language_model_only,
                 "reasoning_parser": p.reasoning_parser,
+                "selection_hint": if name.ends_with("_economy") {
+                    "tight-memory profile; unrelated to AWS cost mode"
+                } else {
+                    ""
+                },
                 "max_model_len": p.max_model_len
             })
         })
