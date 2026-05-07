@@ -20,5 +20,5 @@ Emberlane does not claim a model is validated unless the repo includes a real va
 Current default CUDA first path:
 
 - `qwen35_9b` on `g5.2xlarge`
-- Model ID: `Qwen/Qwen3.5-9B-Instruct`
+- Model ID: `Qwen/Qwen3.5-9B`
 - Runtime: `vllm-cuda`

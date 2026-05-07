@@ -88,7 +88,7 @@ async fn aws_backend_renders_cuda_and_inf2_tfvars() {
     assert_eq!(vars["runtime_pack"], "cuda-vllm");
     assert_eq!(vars["enable_warm_pool"], true);
     assert_eq!(vars["use_spot_instances"], false);
-    assert_eq!(vars["model_id"], "Qwen/Qwen3.5-9B-Instruct");
+    assert_eq!(vars["model_id"], "Qwen/Qwen3.5-9B");
 
     let inf2 = AwsBackend::load_or_default(Some(PathBuf::from("missing.toml")))
         .unwrap()

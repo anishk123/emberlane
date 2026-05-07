@@ -26,8 +26,8 @@ status = "recommended"
 max_model_len = 8192
 
 [models.qwen35_9b]
-display_name = "Qwen 3.5 9B Instruct"
-model_id = "Qwen/Qwen3.5-9B-Instruct"
+display_name = "Qwen 3.5 9B"
+model_id = "Qwen/Qwen3.5-9B"
 default_accelerator = "cuda"
 recommended_instance = "g5.2xlarge"
 runtime = "vllm-cuda"
