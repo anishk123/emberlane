@@ -79,6 +79,7 @@ AWS_REGION=${aws_region}
 HF_HOME=/opt/emberlane/model-cache
 TRANSFORMERS_CACHE=/opt/emberlane/model-cache
 XDG_CACHE_HOME=/opt/emberlane/model-cache
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 ARTIFACT_BUCKET=${artifact_bucket}
 ARTIFACT_PREFIX=${artifact_prefix}
 S3_NEURON_ARTIFACTS_URI=${s3_neuron_artifacts_uri}
@@ -129,6 +130,7 @@ ExecStart=/usr/bin/docker run --rm --name emberlane-vllm \
   -e HF_HOME=/opt/emberlane/model-cache \
   -e TRANSFORMERS_CACHE=/opt/emberlane/model-cache \
   -e XDG_CACHE_HOME=/opt/emberlane/model-cache \
+  -e PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
   -e HF_TOKEN=\$${HF_TOKEN} \
   $IMAGE $CMD_ARGS
 ExecStop=/usr/bin/docker stop emberlane-vllm

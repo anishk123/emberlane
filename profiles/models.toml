@@ -5,7 +5,7 @@ default_accelerator = "cuda"
 recommended_instance = "g4dn.xlarge"
 runtime = "vllm-cuda"
 status = "stable_starter"
-max_model_len = 4096
+max_model_len = 2048
 
 [models.llama31_8b]
 display_name = "Llama 3.1 8B Instruct"
@@ -35,7 +35,7 @@ status = "recommended"
 language_model_only = true
 reasoning_parser = "qwen3"
 fallback_instances = ["g5.4xlarge", "g5.8xlarge"]
-max_model_len = 4096
+max_model_len = 2048
 
 [models.deepseek_distill_qwen_7b]
 display_name = "DeepSeek R1 Distill Qwen 7B"

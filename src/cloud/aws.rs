@@ -711,6 +711,10 @@ impl CloudBackend for AwsBackend {
             json!(enable_idle_scale_down),
         );
         obj.insert(
+            "pytorch_cuda_alloc_conf".to_string(),
+            json!("expandable_segments:True"),
+        );
+        obj.insert(
             "warm_pool_min_size".to_string(),
             json!(if enable_warm_pool { 1 } else { 0 }),
         );
