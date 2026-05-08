@@ -50,6 +50,8 @@ Recommended AWS first path:
 
 Use `cargo run -- aws models` to inspect profiles, `cargo run -- aws modes` to inspect cost modes, and `cargo run -- aws print-config` to inspect the current AWS defaults before you deploy.
 
+If AWS says an instance type is unavailable or temporarily exhausted, run `cargo run -- aws doctor` first. Emberlane will now report the region check and suggest nearby fallback sizes from the profile instead of silently switching hardware.
+
 If you want to compare multiple models, deploy one profile at a time and use `aws benchmark` and `aws cost-report` to compare the real tradeoffs.
 
 ## Supported Interfaces

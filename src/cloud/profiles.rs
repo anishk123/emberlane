@@ -14,6 +14,8 @@ pub struct ModelProfile {
     pub language_model_only: bool,
     #[serde(default)]
     pub reasoning_parser: Option<String>,
+    #[serde(default)]
+    pub fallback_instances: Vec<String>,
     pub max_model_len: u64,
 }
 
@@ -49,6 +51,7 @@ pub fn rows() -> Result<Vec<serde_json::Value>, EmberlaneError> {
                 "status": p.status,
                 "language_model_only": p.language_model_only,
                 "reasoning_parser": p.reasoning_parser,
+                "fallback_instances": p.fallback_instances,
                 "selection_hint": if name.ends_with("_economy") {
                     "tight-memory profile; unrelated to AWS cost mode"
                 } else {

@@ -333,6 +333,94 @@ impl AwsBackend {
         )))
     }
 
+    async fn instance_type_offering_report(&self) -> Result<Value, EmberlaneError> {
+        if cfg!(test)
+            || std::env::var("EMBERLANE_SKIP_CAPACITY_LOOKUP")
+                .ok()
+                .as_deref()
+                == Some("1")
+        {
+            return Ok(json!({"supported": null, "skipped": true}));
+        }
+
+        let instance_type = self.config.instance_type.clone();
+        let region = self.config.region.clone();
+        let instance_filter = format!("Name=instance-type,Values={instance_type}");
+        let location_filter = format!("Name=location,Values={region}");
+        let result = self
+            .run_aws_cli(&[
+                "ec2",
+                "describe-instance-type-offerings",
+                "--location-type",
+                "region",
+                "--filters",
+                &instance_filter,
+                &location_filter,
+                "--region",
+                &region,
+                "--output",
+                "json",
+            ])
+            .await?;
+
+        let status = result["status"].as_i64().unwrap_or(1);
+        if status != 0 {
+            return Ok(json!({
+                "supported": null,
+                "status": status,
+                "stderr": result["stderr"],
+                "stdout": result["stdout"],
+            }));
+        }
+
+        let offerings = serde_json::from_str::<Value>(result["stdout"].as_str().unwrap_or("{}"))
+            .unwrap_or_else(|_| json!({}));
+        let supported = offerings
+            .get("InstanceTypeOfferings")
+            .and_then(Value::as_array)
+            .map(|items| !items.is_empty())
+            .unwrap_or(false);
+
+        Ok(json!({
+            "supported": supported,
+            "instance_type": instance_type,
+            "region": region,
+            "offerings": offerings.get("InstanceTypeOfferings").cloned().unwrap_or_else(|| json!([]))
+        }))
+    }
+
+    fn capacity_fallbacks(&self) -> Vec<String> {
+        profiles::profile(&self.config.model_profile)
+            .map(|p| {
+                let mut fallbacks = p.fallback_instances;
+                if !fallbacks
+                    .iter()
+                    .any(|value| value == &p.recommended_instance)
+                {
+                    fallbacks.insert(0, p.recommended_instance);
+                }
+                fallbacks
+            })
+            .unwrap_or_default()
+    }
+
+    async fn ensure_instance_type_available(&self) -> Result<(), EmberlaneError> {
+        let report = self.instance_type_offering_report().await?;
+        if report.get("supported").and_then(Value::as_bool) == Some(false) {
+            let fallbacks = self.capacity_fallbacks();
+            let fallback_text = if fallbacks.is_empty() {
+                "no explicit fallback instances are listed for this model profile".to_string()
+            } else {
+                format!("try one of: {}", fallbacks.join(", "))
+            };
+            return Err(EmberlaneError::ProviderNotConfigured(format!(
+                "AWS does not currently list instance type '{}' in region '{}'. For model profile '{}', {}.",
+                self.config.instance_type, self.config.region, self.config.model_profile, fallback_text
+            )));
+        }
+        Ok(())
+    }
+
     async fn run_terraform(&self, args: &[&str], stream: bool) -> Result<Value, EmberlaneError> {
         let mut cmd = Command::new("terraform");
         cmd.args(args)
@@ -512,6 +600,26 @@ impl CloudBackend for AwsBackend {
                     .to_string(),
             );
         }
+        let capacity_report = self.instance_type_offering_report().await?;
+        if capacity_report.get("supported").and_then(Value::as_bool) == Some(false) {
+            let mut message = format!(
+                "instance type '{}' is not currently listed in region '{}'.",
+                self.config.instance_type, self.config.region
+            );
+            let fallbacks = self.capacity_fallbacks();
+            if !fallbacks.is_empty() {
+                message.push_str(&format!(
+                    " Suggested alternatives: {}.",
+                    fallbacks.join(", ")
+                ));
+            }
+            warnings.push(message);
+        } else if capacity_report.get("supported").is_none() {
+            warnings.push(
+                "AWS instance-type availability check was skipped or unavailable; deploy may still fail if the region has temporary capacity shortage."
+                    .to_string(),
+            );
+        }
         // Warn when deploying gated models without an HF token
         let gated_prefixes = [
             "meta-llama/",
@@ -537,12 +645,14 @@ impl CloudBackend for AwsBackend {
             "accelerator": self.config.accelerator,
             "instance_type": self.config.instance_type,
             "mode": self.config.mode,
+            "capacity": capacity_report,
             "warnings": warnings,
             "future_backends": {"gcp": "not implemented", "azure": "not implemented"}
         }))
     }
 
     async fn render_deploy_vars(&self) -> Result<Value, EmberlaneError> {
+        self.ensure_instance_type_available().await?;
         let profile = profiles::profile(&self.config.model_profile)?;
         let mut vars = self.config.mode.terraform_values();
         let ami_id = self.resolve_ami_id().await?;

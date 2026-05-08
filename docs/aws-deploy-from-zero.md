@@ -14,6 +14,8 @@ Client
 
 It does not use CDK and does not deploy unrelated cloud providers.
 
+If the chosen instance type is unavailable in the region, run `cargo run -- aws doctor` before redeploying. Emberlane will report a region capacity check and the profile's fallback sizes, but it will not silently switch hardware for you.
+
 Emberlane ships three AWS modes:
 
 - `economy`: coldest and cheapest idle path, intended for true scale-to-zero wakeups.

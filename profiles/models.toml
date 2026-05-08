@@ -34,6 +34,7 @@ runtime = "vllm-cuda"
 status = "recommended"
 language_model_only = true
 reasoning_parser = "qwen3"
+fallback_instances = ["g5.4xlarge", "g5.8xlarge"]
 max_model_len = 4096
 
 [models.deepseek_distill_qwen_7b]

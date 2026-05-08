@@ -14,6 +14,7 @@ Status values:
 - `inf2_experimental`: Inf2/Neuron path; benchmark before relying on it.
 
 Profiles map a friendly name to model ID, default accelerator, recommended instance, runtime, status, and max model length.
+Some profiles also include fallback instance hints for capacity-constrained regions.
 
 Emberlane does not claim a model is validated unless the repo includes a real validation record.
 

@@ -42,6 +42,10 @@ fn model_profiles_parse_and_include_cuda_first_profiles() {
     assert_eq!(qwen.status, "recommended");
     assert!(qwen.language_model_only);
     assert_eq!(qwen.reasoning_parser.as_deref(), Some("qwen3"));
+    assert_eq!(
+        qwen.fallback_instances,
+        vec!["g5.4xlarge".to_string(), "g5.8xlarge".to_string()]
+    );
     assert_eq!(qwen.max_model_len, 4096);
     assert_eq!(profiles.get("llama32_1b_inf2").unwrap().status, "stable");
     assert!(profiles
@@ -214,6 +218,7 @@ async fn aws_backend_doctor_and_cost_report_are_honest() {
     assert!(doctor["warnings"]
         .to_string()
         .contains("recommends instance"));
+    assert_eq!(doctor["capacity"]["skipped"], true);
     let cost = backend.cost_report().await.unwrap();
     assert_eq!(cost["pricing_configured"], false);
     assert_eq!(cost["savings_claimed"], false);
