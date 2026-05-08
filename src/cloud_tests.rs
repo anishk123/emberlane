@@ -47,6 +47,13 @@ fn model_profiles_parse_and_include_cuda_first_profiles() {
         vec!["g5.4xlarge".to_string(), "g5.8xlarge".to_string()]
     );
     assert_eq!(qwen.max_model_len, 1536);
+    let qwen3 = profiles.get("qwen3_4b_inf2").unwrap();
+    assert_eq!(qwen3.default_accelerator, "inf2");
+    assert_eq!(qwen3.recommended_instance, "inf2.xlarge");
+    assert_eq!(qwen3.runtime, "vllm-neuron");
+    assert_eq!(qwen3.status, "inf2_experimental");
+    assert_eq!(qwen3.model_id, "Qwen/Qwen3-4B-Instruct-2507");
+    assert_eq!(qwen3.max_model_len, 2048);
     assert_eq!(profiles.get("llama32_1b_inf2").unwrap().status, "stable");
     assert!(profiles
         .get("llama32_1b_inf2_economy")
@@ -132,6 +139,22 @@ async fn aws_backend_renders_cuda_and_inf2_tfvars() {
     assert_eq!(vars["max_model_len"], 1536);
     assert_eq!(vars["language_model_only"], true);
     assert_eq!(vars["reasoning_parser"], "qwen3");
+
+    let qwen3_inf2 = AwsBackend::load_or_default(Some(PathBuf::from("missing.toml")))
+        .unwrap()
+        .with_overrides(
+            Some("qwen3_4b_inf2".to_string()),
+            Some("inf2".to_string()),
+            Some("inf2.xlarge".to_string()),
+            Some("balanced".to_string()),
+            None,
+        )
+        .unwrap();
+    let vars = qwen3_inf2.render_deploy_vars().await.unwrap();
+    assert_eq!(vars["accelerator"], "inf2");
+    assert_eq!(vars["runtime_pack"], "inf2-neuron");
+    assert_eq!(vars["model_id"], "Qwen/Qwen3-4B-Instruct-2507");
+    assert_eq!(vars["max_model_len"], 2048);
 
     let inf2 = AwsBackend::load_or_default(Some(PathBuf::from("missing.toml")))
         .unwrap()

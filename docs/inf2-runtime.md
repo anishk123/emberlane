@@ -21,6 +21,7 @@ The first documented target is:
 - Health check: `/health`
 
 Qwen `qwen25_15b` uses `Qwen/Qwen2.5-1.5B-Instruct` and is marked experimental until validated on Inf2.
+`qwen3_4b` uses `Qwen/Qwen3-4B-Instruct-2507`, starts from `inf2.xlarge`, and is the first conservative Qwen3 Inf2 profile in Emberlane.
 
 ## Build Image
 
@@ -52,6 +53,8 @@ For gated Hugging Face models, set:
 HF_TOKEN=...
 MODEL_PROFILE=llama32_1b
 ```
+
+For Qwen3 Inf2 experiments, set `MODEL_PROFILE=qwen3_4b`.
 
 `scripts/download-model.sh` uses `huggingface_hub.snapshot_download`. You can also pre-bake weights into an AMI.
 
@@ -140,4 +143,5 @@ Lambda Function URLs do not support response streaming when the Lambda is config
 - First boot may download weights and compile Neuron artifacts.
 - Model support depends on Neuron, transformers, and vLLM versions.
 - Qwen profile is experimental.
+- Qwen3 Inf2 profile is experimental.
 - Streaming support depends on the gateway and AWS networking shape.

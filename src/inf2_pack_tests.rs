@@ -38,6 +38,8 @@ fn inf2_runtime_pack_files_exist_and_models_are_defined() {
     assert!(models.contains("qwen25_15b"));
     assert!(models.contains("Qwen/Qwen2.5-1.5B-Instruct"));
     assert!(models.contains("status: \"experimental\""));
+    assert!(models.contains("qwen3_4b"));
+    assert!(models.contains("Qwen/Qwen3-4B-Instruct-2507"));
 }
 
 #[test]
@@ -58,7 +60,7 @@ fn render_env_outputs_llama_and_qwen_profiles() {
     assert!(text.contains("\"STATUS\": \"validated_target\""));
 
     let qwen = Command::new("python3")
-        .arg(script)
+        .arg(&script)
         .arg("--profile")
         .arg("qwen25_15b")
         .arg("--format")
@@ -68,6 +70,20 @@ fn render_env_outputs_llama_and_qwen_profiles() {
     assert!(qwen.status.success());
     let text = String::from_utf8(qwen.stdout).unwrap();
     assert!(text.contains("Qwen/Qwen2.5-1.5B-Instruct"));
+    assert!(text.contains("\"STATUS\": \"experimental\""));
+
+    let qwen3 = Command::new("python3")
+        .arg(&script)
+        .arg("--profile")
+        .arg("qwen3_4b")
+        .arg("--format")
+        .arg("json")
+        .output()
+        .unwrap();
+    assert!(qwen3.status.success());
+    let text = String::from_utf8(qwen3.stdout).unwrap();
+    assert!(text.contains("Qwen/Qwen3-4B-Instruct-2507"));
+    assert!(text.contains("\"INSTANCE_TYPE\": \"inf2.xlarge\""));
     assert!(text.contains("\"STATUS\": \"experimental\""));
 }
 
@@ -146,6 +162,7 @@ fn docs_and_config_include_inf2_llama() {
     assert!(read("emberlane.example.toml").contains("id = \"inf2-llama\""));
     assert!(read("docs/inf2-runtime.md").contains("meta-llama/Llama-3.2-1B"));
     assert!(read("docs/aws-end-to-end.md").contains("Lambda VPC streaming limitation"));
+    assert!(read("docs/inf2-runtime.md").contains("qwen3_4b"));
 }
 
 #[allow(dead_code)]

@@ -18,4 +18,6 @@ Use:
 cargo run -- aws deploy --model llama32_1b_inf2 --accelerator inf2 --instance inf2.xlarge --mode balanced
 ```
 
+The first Qwen3 Inf2 profile is `qwen3_4b_inf2` on `inf2.xlarge` with `Qwen/Qwen3-4B-Instruct-2507`. It is experimental, not a blanket recommendation.
+
 Benchmark before claiming savings. Warm Pools and cached artifacts can help, but do not guarantee fixed wake times.

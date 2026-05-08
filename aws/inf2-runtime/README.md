@@ -13,6 +13,7 @@ The first success path is `llama32_1b`:
 - OpenAI-compatible API: `/v1/chat/completions`
 
 `qwen25_15b` is included as experimental until validated on Inf2.
+`qwen3_4b` is the first conservative Qwen3 Inf2 starting point and uses `Qwen/Qwen3-4B-Instruct-2507` on `inf2.xlarge`.
 
 ## Files
 
@@ -46,6 +47,8 @@ HF_HOME=/opt/emberlane/model-cache
 TRANSFORMERS_CACHE=/opt/emberlane/model-cache
 NEURON_COMPILED_ARTIFACTS=/opt/emberlane/neuron-cache
 ```
+
+For Qwen3 Inf2 experiments, use `MODEL_PROFILE=qwen3_4b`.
 
 5. Run:
 
