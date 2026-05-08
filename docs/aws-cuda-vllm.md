@@ -23,4 +23,6 @@ You must choose a real GPU AMI. A practical first path is an AWS Deep Learning A
 
 The dev bootstrap path starts `vllm/vllm-openai:latest` through Docker when Docker/GPU runtime are present. For production, bake and validate the AMI.
 
+Emberlane keeps the Hugging Face cache on the instance disk and forces vLLM safetensors prefetch on the default CUDA path so repeat boots on the same node avoid re-downloading as much and model load is less dependent on vLLM heuristics.
+
 No fixed latency or savings claims are made. Benchmark your model, AMI, region, and prompt mix.

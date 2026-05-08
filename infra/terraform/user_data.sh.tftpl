@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # 1. Logging and basic setup
-mkdir -p /etc/emberlane /opt/emberlane /var/log/emberlane
+mkdir -p /etc/emberlane /opt/emberlane /opt/emberlane/model-cache /opt/emberlane/neuron-cache /var/log/emberlane
 exec > >(tee -a /var/log/emberlane/bootstrap.log) 2>&1
 
 echo "[emberlane] ========================================"
@@ -76,6 +76,9 @@ ACCELERATOR=${accelerator}
 RUNTIME_PACK=${runtime_pack}
 RUNTIME_PORT=${runtime_port}
 AWS_REGION=${aws_region}
+HF_HOME=/opt/emberlane/model-cache
+TRANSFORMERS_CACHE=/opt/emberlane/model-cache
+XDG_CACHE_HOME=/opt/emberlane/model-cache
 ARTIFACT_BUCKET=${artifact_bucket}
 ARTIFACT_PREFIX=${artifact_prefix}
 S3_NEURON_ARTIFACTS_URI=${s3_neuron_artifacts_uri}
@@ -106,7 +109,7 @@ if [[ "${accelerator}" == "cuda" ]]; then
     if [[ -n "${reasoning_parser}" ]]; then
         REASONING_PARSER_FLAG="--reasoning-parser ${reasoning_parser}"
     fi
-    CMD_ARGS="--model ${model_id} --max-model-len ${max_model_len} $LANGUAGE_MODEL_ONLY_FLAG $REASONING_PARSER_FLAG --host 0.0.0.0 --port 8000"
+    CMD_ARGS="--model ${model_id} --max-model-len ${max_model_len} --safetensors-load-strategy=prefetch $LANGUAGE_MODEL_ONLY_FLAG $REASONING_PARSER_FLAG --host 0.0.0.0 --port 8000"
     
     cat >/etc/systemd/system/emberlane-runtime.service <<UNIT
 [Unit]
@@ -121,7 +124,11 @@ ExecStartPre=-/usr/bin/docker stop emberlane-vllm
 ExecStartPre=-/usr/bin/docker rm emberlane-vllm
 ExecStart=/usr/bin/docker run --rm --name emberlane-vllm \
   $GPU_FLAGS --shm-size=10.24gb \
+  -v /opt/emberlane/model-cache:/opt/emberlane/model-cache \
   -p ${runtime_port}:8000 \
+  -e HF_HOME=/opt/emberlane/model-cache \
+  -e TRANSFORMERS_CACHE=/opt/emberlane/model-cache \
+  -e XDG_CACHE_HOME=/opt/emberlane/model-cache \
   -e HF_TOKEN=\$${HF_TOKEN} \
   $IMAGE $CMD_ARGS
 ExecStop=/usr/bin/docker stop emberlane-vllm
@@ -159,6 +166,10 @@ ExecStart=/usr/bin/docker run --rm --name emberlane-vllm \
   -e VLLM_USE_V1=0 \
   -e VLLM_ATTENTION_BACKEND=NEURON \
   -p ${runtime_port}:8000 \
+  -v /opt/emberlane/model-cache:/opt/emberlane/model-cache \
+  -e HF_HOME=/opt/emberlane/model-cache \
+  -e TRANSFORMERS_CACHE=/opt/emberlane/model-cache \
+  -e XDG_CACHE_HOME=/opt/emberlane/model-cache \
   -e HF_TOKEN=\$${HF_TOKEN} \
   $IMAGE python3 -m vllm.entrypoints.openai.api_server \
   --model ${model_id} \
