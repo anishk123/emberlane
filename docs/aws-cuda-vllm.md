@@ -25,4 +25,6 @@ The dev bootstrap path starts `vllm/vllm-openai:latest` through Docker when Dock
 
 Emberlane keeps the Hugging Face cache on the instance disk, forces vLLM safetensors prefetch, and uses a tighter default `max_model_len` of `1024` on the Qwen3.5 profile so the default CUDA path fits the single-GPU `g5.2xlarge` more reliably.
 
+If you want to trade some safety for more context headroom on the same GPU, try the experimental `qwen35_9b_quantized` profile. It points at a documented 4-bit vLLM-ready checkpoint and starts at `2048` context, but it is still an opt-in experiment rather than the default.
+
 No fixed latency or savings claims are made. Benchmark your model, AMI, region, and prompt mix.

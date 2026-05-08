@@ -37,6 +37,17 @@ reasoning_parser = "qwen3"
 fallback_instances = ["g5.4xlarge", "g5.8xlarge"]
 max_model_len = 1024
 
+[models.qwen35_9b_quantized]
+display_name = "Qwen 3.5 9B (Quantized Experimental)"
+model_id = "inference-optimization/Qwen3.5-9B-quantized.w4a16"
+default_accelerator = "cuda"
+recommended_instance = "g5.2xlarge"
+runtime = "vllm-cuda"
+status = "experimental"
+language_model_only = true
+reasoning_parser = "qwen3"
+max_model_len = 2048
+
 [models.qwen3_4b_inf2]
 display_name = "Qwen 3 4B (Inf2 Experimental)"
 model_id = "Qwen/Qwen3-4B-Instruct-2507"

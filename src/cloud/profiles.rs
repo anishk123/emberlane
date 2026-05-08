@@ -54,6 +54,8 @@ pub fn rows() -> Result<Vec<serde_json::Value>, EmberlaneError> {
                 "fallback_instances": p.fallback_instances,
                 "selection_hint": if name.ends_with("_economy") {
                     "tight-memory profile; unrelated to AWS cost mode"
+                } else if name.contains("quantized") {
+                    "community quantized checkpoint; experimental memory-saving profile"
                 } else {
                     ""
                 },

@@ -47,6 +47,18 @@ fn model_profiles_parse_and_include_cuda_first_profiles() {
         vec!["g5.4xlarge".to_string(), "g5.8xlarge".to_string()]
     );
     assert_eq!(qwen.max_model_len, 1024);
+    let qwen_quantized = profiles.get("qwen35_9b_quantized").unwrap();
+    assert_eq!(qwen_quantized.default_accelerator, "cuda");
+    assert_eq!(qwen_quantized.recommended_instance, "g5.2xlarge");
+    assert_eq!(qwen_quantized.runtime, "vllm-cuda");
+    assert_eq!(qwen_quantized.status, "experimental");
+    assert!(qwen_quantized.language_model_only);
+    assert_eq!(qwen_quantized.reasoning_parser.as_deref(), Some("qwen3"));
+    assert_eq!(
+        qwen_quantized.model_id,
+        "inference-optimization/Qwen3.5-9B-quantized.w4a16"
+    );
+    assert_eq!(qwen_quantized.max_model_len, 2048);
     let qwen3 = profiles.get("qwen3_4b_inf2").unwrap();
     assert_eq!(qwen3.default_accelerator, "inf2");
     assert_eq!(qwen3.recommended_instance, "inf2.xlarge");
@@ -65,6 +77,19 @@ fn model_profiles_parse_and_include_cuda_first_profiles() {
         .unwrap()
         .display_name
         .contains("Tight Memory"));
+}
+
+#[test]
+fn quantized_profiles_are_labeled_in_rows() {
+    let rows = profiles::rows().unwrap();
+    let row = rows
+        .iter()
+        .find(|row| row["profile"] == "qwen35_9b_quantized")
+        .unwrap();
+    assert_eq!(
+        row["selection_hint"],
+        "community quantized checkpoint; experimental memory-saving profile"
+    );
 }
 
 #[test]
@@ -137,6 +162,25 @@ async fn aws_backend_renders_cuda_and_inf2_tfvars() {
     assert_eq!(vars["desired_capacity_on_sleep"], 0);
     assert_eq!(vars["model_id"], "Qwen/Qwen3.5-9B");
     assert_eq!(vars["max_model_len"], 1024);
+    assert_eq!(vars["language_model_only"], true);
+    assert_eq!(vars["reasoning_parser"], "qwen3");
+
+    let quantized = AwsBackend::load_or_default(Some(PathBuf::from("missing.toml")))
+        .unwrap()
+        .with_overrides(
+            Some("qwen35_9b_quantized".to_string()),
+            Some("cuda".to_string()),
+            Some("g5.2xlarge".to_string()),
+            Some("balanced".to_string()),
+            None,
+        )
+        .unwrap();
+    let vars = quantized.render_deploy_vars().await.unwrap();
+    assert_eq!(
+        vars["model_id"],
+        "inference-optimization/Qwen3.5-9B-quantized.w4a16"
+    );
+    assert_eq!(vars["max_model_len"], 2048);
     assert_eq!(vars["language_model_only"], true);
     assert_eq!(vars["reasoning_parser"], "qwen3");
 

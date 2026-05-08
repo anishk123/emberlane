@@ -27,6 +27,13 @@ Current default CUDA first path:
 - Runtime: `vllm-cuda`
 - Text-only serving on CUDA uses the profile's max context length, `--language-model-only`, and `--reasoning-parser qwen3` so the default `g5.2xlarge` path stays practical and follows the official vLLM recipe. The default context is `1024`.
 
+Experimental quantized CUDA path:
+
+- `qwen35_9b_quantized` on `g5.2xlarge`
+- Model ID: `inference-optimization/Qwen3.5-9B-quantized.w4a16`
+- Runtime: `vllm-cuda`
+- This profile points Emberlane at a documented 4-bit vLLM-ready checkpoint and starts with a larger `2048` context window. It is the profile to try if you want more headroom on the same 24 GB GPU, but it is still experimental and should be benchmarked before becoming a default.
+
 Current experimental Inf2 Qwen3 path:
 
 - `qwen3_4b_inf2` on `inf2.xlarge`
