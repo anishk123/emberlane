@@ -192,7 +192,7 @@ The first boot can include:
 - A proxy on port `8080` that serves `/health` and forwards `/v1/*` to the model server on port `8000`.
 - Health check transition from `503` to `200`.
 - For Qwen3.5 text-only serving on CUDA/G5, Emberlane passes a profile-specific `--max-model-len`, `--language-model-only`, and `--reasoning-parser qwen3` so the model follows the official serving shape and fits the default `g5.2xlarge` path more reliably.
-- For Qwen3.5 on CUDA/G5, Emberlane follows the official text-only serving shape: `Qwen/Qwen3.5-9B`, `--language-model-only`, `--reasoning-parser qwen3`, and a reduced context length that is practical on the single-GPU `g5.2xlarge` default.
+- For Qwen3.5 on CUDA/G5, Emberlane follows the official text-only serving shape: `Qwen/Qwen3.5-9B`, `--language-model-only`, `--reasoning-parser qwen3`, and a reduced context length that is practical on the single-GPU `g5.2xlarge` default. The current default is `1536`; if you still see OOMs, drop to `1024`.
 
 This can take several minutes. Warm Pools and baked AMIs reduce repeated work, but they do not guarantee a fixed wake time. Warm Pools are an advanced option, not the default balanced behavior.
 
