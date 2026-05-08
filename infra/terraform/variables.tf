@@ -217,11 +217,11 @@ variable "enable_idle_scale_down" {
 variable "enable_warm_pool" {
   description = "Create an ASG Warm Pool for prepared instances."
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "use_spot_instances" {
-  description = "Use Spot instances for cost savings. Automatically true for economy, false for balanced/always-on because Warm Pools require on-demand instances."
+  description = "Use Spot instances for cost savings. Automatically true for economy and false for balanced/always-on by default."
   type        = bool
   default     = false
 }

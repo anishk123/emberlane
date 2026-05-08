@@ -35,6 +35,7 @@ That means the same Terraform pack supports both of these operating shapes:
 - First boot can include model download, container startup, and for Inf2, Neuron compilation; no fixed wake-time promise is made.
 - You must provide a valid GPU, Neuron, or baked AMI ID.
 - `balanced` is not the same as a cold-start-only mode. It should come up ready during deploy and only sleep again after idle traffic falls off.
+- `balanced` does not enable Warm Pool by default. That keeps the default path simpler and avoids overcommitting GPU quota on single-instance buckets.
 
 ## Cost Warning
 
@@ -193,7 +194,7 @@ The first boot can include:
 - For Qwen3.5 text-only serving on CUDA/G5, Emberlane passes a profile-specific `--max-model-len`, `--language-model-only`, and `--reasoning-parser qwen3` so the model follows the official serving shape and fits the default `g5.2xlarge` path more reliably.
 - For Qwen3.5 on CUDA/G5, Emberlane follows the official text-only serving shape: `Qwen/Qwen3.5-9B`, `--language-model-only`, `--reasoning-parser qwen3`, and a reduced context length that is practical on the single-GPU `g5.2xlarge` default.
 
-This can take several minutes. Warm Pools and baked AMIs reduce repeated work, but they do not guarantee a fixed wake time.
+This can take several minutes. Warm Pools and baked AMIs reduce repeated work, but they do not guarantee a fixed wake time. Warm Pools are an advanced option, not the default balanced behavior.
 
 `startup_timeout_secs` is the wake-and-wait budget, not the ASG idle shutdown timer. If you are tuning responsiveness, adjust the startup timeout for slow model loads and the idle alarm separately for scale-to-zero behavior.
 
@@ -202,11 +203,12 @@ This can take several minutes. Warm Pools and baked AMIs reduce repeated work, b
 Terraform can create an ASG Warm Pool:
 
 ```hcl
+# opt in only if you want extra prepared capacity
 enable_warm_pool = true
 warm_pool_pool_state = "Stopped"
 ```
 
-Warm Pools can keep prepared instances closer to ready state, but a depleted pool or model/runtime drift can still cause a cold path.
+Warm Pools can keep prepared instances closer to ready state, but a depleted pool or model/runtime drift can still cause a cold path. They also consume extra capacity, so leave them off unless you explicitly want that tradeoff.
 
 ## Streaming Behavior
 

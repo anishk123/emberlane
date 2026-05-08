@@ -22,9 +22,9 @@ cargo run -- aws modes
 - ASG min `0`
 - desired `1`
 - max `1`
-- Warm Pool enabled
 - On-demand instances
-- Some storage/EBS/prepared-capacity cost
+- Warm Pool disabled by default
+- Some storage/EBS cost while running
 - Starts ready, then scales down after idle
 - Idle scale-down enabled
 
@@ -41,4 +41,4 @@ cargo run -- aws modes
 
 Emberlane does not claim exact wake latency or cost savings. Use `emberlane aws benchmark` and real pricing inputs before making decisions.
 
-AWS does not allow a Warm Pool on an ASG that requests Spot instances, so `balanced` uses on-demand instances to keep the warm-pool path valid. `balanced` is the ready-on-deploy default; `economy` is the coldest path; `always-on` keeps one instance up and never auto-sleeps.
+`balanced` is the ready-on-deploy default; `economy` is the coldest path; `always-on` keeps one instance up and never auto-sleeps. Warm Pool is available as an advanced Terraform option, but it is not part of the default balanced semantics.

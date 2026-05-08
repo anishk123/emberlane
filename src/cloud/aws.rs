@@ -698,7 +698,7 @@ impl CloudBackend for AwsBackend {
         if let Some(profile) = &self.config.profile {
             obj.insert("aws_profile".to_string(), json!(profile));
         }
-        let enable_warm_pool = matches!(self.config.mode, CostMode::Balanced);
+        let enable_warm_pool = false;
         let enable_idle_scale_down = !matches!(self.config.mode, CostMode::AlwaysOn);
         let desired_capacity_on_sleep = if matches!(self.config.mode, CostMode::AlwaysOn) {
             1
@@ -899,7 +899,7 @@ impl CloudBackend for AwsBackend {
             "model_id": profile.model_id,
             "instance_type": self.config.instance_type,
             "mode": self.config.mode,
-            "warm_pool_enabled": self.config.mode == CostMode::Balanced,
+            "warm_pool_enabled": false,
             "elapsed_ms": elapsed_ms,
             "result": result.as_ref().ok().cloned(),
             "error": result.err().map(|e| e.to_string()),
@@ -922,7 +922,7 @@ impl CloudBackend for AwsBackend {
             "message": "No pricing file is configured, so Emberlane will not claim savings.",
             "comparison": [
                 {"mode": "economy", "concept": "lowest idle infrastructure cost; coldest wake path"},
-                {"mode": "balanced", "concept": "starts ready, uses Warm Pool, and scales down after idle"},
+                {"mode": "balanced", "concept": "starts ready, then scales down after idle"},
                 {"mode": "always-on", "concept": "keeps one instance running and does not auto-scale down on idle"}
             ]
         }))

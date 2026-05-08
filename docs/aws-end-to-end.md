@@ -19,7 +19,7 @@ Client
 3. Bake an AMI or create a launch template that installs the runtime pack.
 4. Create an ALB target group on port `8080` with health path `/health`.
 5. Create an ASG with min `0`, desired `1` for `balanced` or `0` for `economy`, max `1`.
-6. Optionally add a Warm Pool in stopped or hibernated state for `balanced`.
+6. Optionally add a Warm Pool in stopped or hibernated state only if you explicitly want that extra prepared-capacity tradeoff.
 7. Configure Emberlane with the `inf2-llama` `aws_asg` runtime.
 8. Deploy Lambda WakeBridge.
 9. Send an OpenAI-compatible request.
@@ -32,7 +32,7 @@ CUDA/G5 is the recommended first path for v1. Inf2/Neuron remains experimental; 
 Mode semantics:
 
 - `economy` wakes from zero on demand.
-- `balanced` starts ready, then scales down after idle.
+- `balanced` starts ready, then scales down after idle. Warm Pool is optional, not part of the default meaning.
 - `always-on` keeps one instance running.
 
 ## AMI And Launch Template

@@ -76,7 +76,7 @@ fn cost_modes_map_to_terraform_values() {
     );
     assert_eq!(
         CostMode::Balanced.terraform_values()["enable_warm_pool"],
-        true
+        false
     );
     assert_eq!(
         CostMode::Balanced.terraform_values()["asg_desired_capacity"],
@@ -123,7 +123,7 @@ async fn aws_backend_renders_cuda_and_inf2_tfvars() {
     let vars = cuda.render_deploy_vars().await.unwrap();
     assert_eq!(vars["accelerator"], "cuda");
     assert_eq!(vars["runtime_pack"], "cuda-vllm");
-    assert_eq!(vars["enable_warm_pool"], true);
+    assert_eq!(vars["enable_warm_pool"], false);
     assert_eq!(vars["enable_idle_scale_down"], true);
     assert_eq!(vars["use_spot_instances"], false);
     assert_eq!(vars["desired_capacity_on_wake"], 1);
@@ -146,7 +146,7 @@ async fn aws_backend_renders_cuda_and_inf2_tfvars() {
     let vars = inf2.render_deploy_vars().await.unwrap();
     assert_eq!(vars["accelerator"], "inf2");
     assert_eq!(vars["runtime_pack"], "inf2-neuron");
-    assert_eq!(vars["enable_warm_pool"], true);
+    assert_eq!(vars["enable_warm_pool"], false);
 }
 
 #[tokio::test]
@@ -168,7 +168,7 @@ async fn aws_backend_renders_direct_deploy_profile_region_and_ami() {
     assert_eq!(vars["aws_profile"], "emberlane");
     assert_eq!(vars["aws_region"], "us-west-2");
     assert_eq!(vars["ami_id"], "ami-1234567890abcdef0");
-    assert_eq!(vars["enable_warm_pool"], true);
+    assert_eq!(vars["enable_warm_pool"], false);
     assert_eq!(vars["enable_idle_scale_down"], true);
     assert_eq!(vars["use_spot_instances"], false);
     assert_eq!(vars["desired_capacity_on_sleep"], 0);

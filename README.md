@@ -172,7 +172,7 @@ For multi-model comparison:
 | Mode | Default capacity | Warm pool | Pricing | Good for |
 | --- | --- | --- | --- | --- |
 | `economy` | min `0`, desired `0`, max `1` | Disabled | Spot | Cheapest cold-start path |
-| `balanced` | min `0`, desired `1`, max `1` | Enabled | On-demand | Ready on deploy, scales down after idle |
+| `balanced` | min `0`, desired `1`, max `1` | Disabled by default | On-demand | Ready on deploy, scales down after idle |
 | `always-on` | min `1`, desired `1`, max `1` | Disabled | On-demand | Never auto-sleeps |
 
 These are defaults, not hard limits. You can override them in config or on the command line when you need something specific.
