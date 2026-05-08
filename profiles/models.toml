@@ -35,7 +35,7 @@ status = "recommended"
 language_model_only = true
 reasoning_parser = "qwen3"
 fallback_instances = ["g5.4xlarge", "g5.8xlarge"]
-max_model_len = 1536
+max_model_len = 1024
 
 [models.qwen3_4b_inf2]
 display_name = "Qwen 3 4B (Inf2 Experimental)"

@@ -46,7 +46,7 @@ fn model_profiles_parse_and_include_cuda_first_profiles() {
         qwen.fallback_instances,
         vec!["g5.4xlarge".to_string(), "g5.8xlarge".to_string()]
     );
-    assert_eq!(qwen.max_model_len, 1536);
+    assert_eq!(qwen.max_model_len, 1024);
     let qwen3 = profiles.get("qwen3_4b_inf2").unwrap();
     assert_eq!(qwen3.default_accelerator, "inf2");
     assert_eq!(qwen3.recommended_instance, "inf2.xlarge");
@@ -136,7 +136,7 @@ async fn aws_backend_renders_cuda_and_inf2_tfvars() {
     assert_eq!(vars["desired_capacity_on_wake"], 1);
     assert_eq!(vars["desired_capacity_on_sleep"], 0);
     assert_eq!(vars["model_id"], "Qwen/Qwen3.5-9B");
-    assert_eq!(vars["max_model_len"], 1536);
+    assert_eq!(vars["max_model_len"], 1024);
     assert_eq!(vars["language_model_only"], true);
     assert_eq!(vars["reasoning_parser"], "qwen3");
 
@@ -195,7 +195,7 @@ async fn aws_backend_renders_direct_deploy_profile_region_and_ami() {
     assert_eq!(vars["enable_idle_scale_down"], true);
     assert_eq!(vars["use_spot_instances"], false);
     assert_eq!(vars["desired_capacity_on_sleep"], 0);
-    assert_eq!(vars["max_model_len"], 1536);
+    assert_eq!(vars["max_model_len"], 1024);
     assert_eq!(vars["language_model_only"], true);
     assert_eq!(vars["reasoning_parser"], "qwen3");
 
@@ -254,7 +254,7 @@ fn aws_init_config_text_is_cuda_first() {
     assert!(text.contains("instance_type = \"g5.2xlarge\""));
     assert!(text.contains("model_profile = \"qwen35_9b\""));
     assert!(text.contains("mode = \"balanced\""));
-    assert!(text.contains("max_model_len = 1536"));
+    assert!(text.contains("max_model_len = 1024"));
     assert!(text.contains("language_model_only = true"));
     assert!(text.contains("reasoning_parser = \"qwen3\""));
 }
