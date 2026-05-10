@@ -42,6 +42,15 @@ resource "aws_launch_template" "runtime" {
     model_profile               = var.model_profile
     model_id                    = var.model_id
     max_model_len               = tostring(var.max_model_len)
+    quantization                = var.quantization
+    rope_scaling_json           = var.rope_scaling_json
+    gpu_memory_utilization      = tostring(var.gpu_memory_utilization)
+    enforce_eager               = tostring(var.enforce_eager)
+    max_num_seqs                = tostring(var.max_num_seqs)
+    block_size                  = tostring(var.block_size)
+    num_gpu_blocks_override     = tostring(var.num_gpu_blocks_override)
+    vllm_extra_args             = var.vllm_extra_args
+    vllm_command                = var.vllm_command
     language_model_only         = tostring(var.language_model_only)
     reasoning_parser            = var.reasoning_parser
     accelerator                 = var.accelerator

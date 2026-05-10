@@ -22,6 +22,16 @@ class RenderEnvTests(unittest.TestCase):
         env = render_env.profile_env(models, "llama32_1b", "custom/model")
         self.assertEqual(env["MODEL_ID"], "custom/model")
 
+    def test_qwen3_8b_inf2_env(self):
+        models = render_env.load_models(ROOT / "models.yaml")
+        env = render_env.profile_env(models, "qwen3_8b_inf2_4k")
+        self.assertEqual(env["MODEL_ID"], "Qwen/Qwen3-8B")
+        self.assertEqual(env["INSTANCE_TYPE"], "inf2.xlarge")
+        self.assertEqual(env["MAX_MODEL_LEN"], "4096")
+        self.assertEqual(env["MAX_NUM_SEQS"], "8")
+        self.assertEqual(env["BLOCK_SIZE"], "32")
+        self.assertEqual(env["NUM_GPU_BLOCKS_OVERRIDE"], "8")
+
 
 if __name__ == "__main__":
     unittest.main()

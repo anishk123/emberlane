@@ -22,7 +22,7 @@ Use a plain ASG when occasional cold starts are acceptable and you want the simp
 ## Required AWS Resources
 
 - Launch template or launch configuration for the runtime instance.
-- Auto Scaling Group with min size commonly `0`, desired capacity `0`, and max size at least `1`.
+- Auto Scaling Group with min size commonly `0`, desired capacity `1`, and max size at least `1` for ready-on-deploy modes.
 - Optional Warm Pool.
 - ALB, NLB, or another stable endpoint for `base_url`.
 - Security groups allowing Emberlane/Lambda/ALB to reach the runtime health and chat ports.
@@ -117,7 +117,7 @@ Replace `REGION`, `ACCOUNT_ID`, and `ASG_NAME`. Keep `SetDesiredCapacity` scoped
 
 ## Cost Model
 
-Running instances cost while active. Stopped or hibernated Warm Pool instances mainly incur storage and related attached-resource costs. ALB, NAT, public IPv4, storage, logs, and data transfer can still cost money even when desired capacity is 0.
+Running instances cost while active. Stopped or hibernated Warm Pool instances mainly incur storage and related attached-resource costs. ALB, NAT, public IPv4, storage, logs, and data transfer can still cost money even when desired capacity is 0 or when the ASG is asleep after idle.
 
 ## Limitations
 

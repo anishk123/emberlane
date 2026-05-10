@@ -1054,6 +1054,20 @@ mod tests {
         });
 
         let (router, runner) = aws_router(format!("http://{addr}"), RuntimeMode::Fast);
+        runner.outputs.lock().await.push_back(CommandOutput {
+            status: 0,
+            stdout: json!({
+                "AutoScalingGroups": [{
+                    "AutoScalingGroupName": "emberlane-echo-asg",
+                    "DesiredCapacity": 1,
+                    "MinSize": 0,
+                    "MaxSize": 1,
+                    "Instances": []
+                }]
+            })
+            .to_string(),
+            stderr: String::new(),
+        });
         let resp = router
             .chat(
                 "aws-echo",
@@ -1142,6 +1156,20 @@ mod tests {
         });
 
         let (router, runner) = aws_router(format!("http://{addr}"), RuntimeMode::Fast);
+        runner.outputs.lock().await.push_back(CommandOutput {
+            status: 0,
+            stdout: json!({
+                "AutoScalingGroups": [{
+                    "AutoScalingGroupName": "emberlane-echo-asg",
+                    "DesiredCapacity": 1,
+                    "MinSize": 0,
+                    "MaxSize": 1,
+                    "Instances": []
+                }]
+            })
+            .to_string(),
+            stderr: String::new(),
+        });
         let resp = router
             .openai_chat(
                 None,

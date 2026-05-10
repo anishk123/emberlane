@@ -107,7 +107,7 @@ terraform version
 If you only want to render the generated variables first, add `--plan-only`:
 
 ```sh
-cargo run -- aws deploy --profile emberlane --model qwen35_9b --accelerator cuda --instance g5.2xlarge --mode balanced --plan-only
+cargo run -- aws deploy --profile emberlane --model qwen3_8b_awq_32k_g5 --accelerator cuda --instance g5.2xlarge --mode economy --acknowledge-unvalidated --plan-only
 ```
 
 ## Pick An AMI
@@ -191,8 +191,8 @@ The first boot can include:
 - Neuron graph compilation.
 - A proxy on port `8080` that serves `/health` and forwards `/v1/*` to the model server on port `8000`.
 - Health check transition from `503` to `200`.
-- For Qwen3.5 text-only serving on CUDA/G5, Emberlane passes a profile-specific `--max-model-len`, `--language-model-only`, and `--reasoning-parser qwen3` so the model follows the official serving shape and fits the default `g5.2xlarge` path more reliably.
-- For Qwen3.5 on CUDA/G5, Emberlane follows the official text-only serving shape: `Qwen/Qwen3.5-9B`, `--language-model-only`, `--reasoning-parser qwen3`, and a reduced context length of `1024` on the single-GPU `g5.2xlarge` default.
+- For Qwen3 AWQ on CUDA/G5, Emberlane passes the profile-specific `--max-model-len`, quantization, and `--reasoning-parser qwen3` so the model follows the official serving shape and fits the default `g5.2xlarge` path more reliably.
+- For Qwen3 AWQ on CUDA/G5, Emberlane follows the official text-only serving shape: `Qwen/Qwen3-8B-AWQ`, `--reasoning-parser qwen3`, and a 32K default context on the single-GPU `g5.2xlarge` path.
 
 This can take several minutes. Warm Pools and baked AMIs reduce repeated work, but they do not guarantee a fixed wake time. Warm Pools are an advanced option, not the default balanced behavior.
 
@@ -261,7 +261,8 @@ terraform destroy
 - ALB target unhealthy: check instance security group, target port `8080`, `/health`, and journald.
 - Security group blocked: ALB should reach the instance on `runtime_port`; client CIDR should reach ALB port `80`.
 - Lambda timeout: increase `lambda_timeout_secs` or use slow mode for immediate warming responses.
-- Health never ready: SSH/SSM into the instance if enabled and test `curl localhost:8000/v1/models`.
+- Health never ready: use SSM Session Manager if available and test `curl localhost:8000/v1/models`.
+- SSM Session Manager unavailable: verify the runtime instance profile includes `AmazonSSMManagedInstanceCore`, the instance has outbound internet access to SSM endpoints, and the `amazon-ssm-agent` service is running.
 - Model too large: start with `llama32_1b` on `inf2.xlarge`.
 - Warm Pool empty: inspect `aws/scripts/check-asg.sh`; warm pools can be depleted or permission-limited.
 

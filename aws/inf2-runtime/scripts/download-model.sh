@@ -17,9 +17,10 @@ python3 - <<'PY'
 import os
 from huggingface_hub import snapshot_download
 
-snapshot_download(
+path = snapshot_download(
     repo_id=os.environ["MODEL_ID"],
     cache_dir=os.environ.get("HF_HOME", "/opt/emberlane/model-cache"),
     token=os.environ.get("HF_TOKEN") or None,
 )
+print(path)
 PY

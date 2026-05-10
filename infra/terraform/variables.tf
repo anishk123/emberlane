@@ -109,7 +109,7 @@ variable "key_name" {
 variable "model_profile" {
   description = "Emberlane model profile from profiles/models.toml."
   type        = string
-  default     = "qwen35_9b"
+  default     = "qwen3_8b_awq_32k"
 }
 
 variable "model_id" {
@@ -121,7 +121,67 @@ variable "model_id" {
 variable "max_model_len" {
   description = "Maximum model context length passed to the CUDA runtime."
   type        = number
-  default     = 4096
+  default     = 32768
+}
+
+variable "quantization" {
+  description = "Optional vLLM quantization mode such as awq."
+  type        = string
+  default     = ""
+}
+
+variable "rope_scaling_json" {
+  description = "Optional JSON rope scaling config passed to vLLM."
+  type        = string
+  default     = ""
+}
+
+variable "gpu_memory_utilization" {
+  description = "Optional vLLM GPU memory utilization."
+  type        = number
+  default     = 0
+}
+
+variable "enforce_eager" {
+  description = "If true, pass --enforce-eager to the CUDA runtime."
+  type        = bool
+  default     = false
+}
+
+variable "max_num_seqs" {
+  description = "Maximum concurrent sequences used by the Inf2 runtime."
+  type        = number
+  default     = 0
+}
+
+variable "block_size" {
+  description = "Neuron block size used by the Inf2 runtime."
+  type        = number
+  default     = 0
+}
+
+variable "num_gpu_blocks_override" {
+  description = "Neuron scheduler override used by the Inf2 runtime."
+  type        = number
+  default     = 0
+}
+
+variable "vllm_extra_args" {
+  description = "Additional raw arguments appended to the CUDA vLLM command."
+  type        = string
+  default     = ""
+}
+
+variable "pytorch_cuda_alloc_conf" {
+  description = "PyTorch CUDA allocator configuration passed through to the runtime environment."
+  type        = string
+  default     = "expandable_segments:True"
+}
+
+variable "vllm_command" {
+  description = "Exact vLLM command used by the runtime bootstrap."
+  type        = string
+  default     = ""
 }
 
 variable "language_model_only" {
@@ -132,6 +192,60 @@ variable "language_model_only" {
 
 variable "reasoning_parser" {
   description = "Optional vLLM reasoning parser passed to CUDA runtimes, such as qwen3 for Qwen3.5."
+  type        = string
+  default     = ""
+}
+
+variable "visibility" {
+  description = "Model profile visibility metadata."
+  type        = string
+  default     = "recommended"
+}
+
+variable "validation_status" {
+  description = "Model profile validation status metadata."
+  type        = string
+  default     = "needs_emberlane_validation"
+}
+
+variable "validated" {
+  description = "Whether the selected model profile has a matching validation artifact."
+  type        = bool
+  default     = false
+}
+
+variable "task_group" {
+  description = "Human-readable task grouping for the selected model profile."
+  type        = string
+  default     = ""
+}
+
+variable "instance_group" {
+  description = "Human-readable instance grouping for the selected model profile."
+  type        = string
+  default     = ""
+}
+
+variable "default_mode" {
+  description = "Preferred default mode recorded from the selected model profile."
+  type        = string
+  default     = ""
+}
+
+variable "default_pricing" {
+  description = "Preferred economy pricing label recorded from the selected model profile."
+  type        = string
+  default     = ""
+}
+
+variable "balanced_pricing" {
+  description = "Preferred balanced pricing label recorded from the selected model profile."
+  type        = string
+  default     = ""
+}
+
+variable "serving_modality" {
+  description = "Serving modality recorded from the selected model profile."
   type        = string
   default     = ""
 }

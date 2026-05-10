@@ -40,7 +40,11 @@ if [[ -n "${S3_NEURON_ARTIFACTS_URI:-}" ]]; then
 fi
 
 if [[ -n "${HF_TOKEN:-}" || -n "${MODEL_ID:-}" ]]; then
-  "${ROOT_DIR}/scripts/download-model.sh" || true
+  MODEL_LOCAL_PATH="$("${ROOT_DIR}/scripts/download-model.sh")"
+  if [[ -n "${MODEL_LOCAL_PATH:-}" ]]; then
+    printf '\nMODEL_LOCAL_PATH=%s\n' "${MODEL_LOCAL_PATH}" >> /etc/emberlane/inf2.env
+    export MODEL_LOCAL_PATH
+  fi
 fi
 
 systemctl daemon-reload

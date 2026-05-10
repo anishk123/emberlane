@@ -19,7 +19,7 @@ mod inf2_pack_tests;
 mod terraform_pack_tests;
 
 use clap::{Args, Parser, Subcommand};
-use cloud::{model::CloudBackend, profiles, AwsBackend, CostMode};
+use cloud::{model::CloudBackend, pricing, profiles, AwsBackend, CostMode};
 use config::{EmberlaneConfig, S3StorageConfig};
 use error::EmberlaneError;
 use model::{ChatMessage, ChatRequest, RouteRequest, StorageBackend};
@@ -158,12 +158,47 @@ enum AwsCommand {
         profile: Option<String>,
         #[arg(long)]
         region: Option<String>,
+        #[arg(long)]
+        experimental: bool,
+        #[arg(long)]
+        show_hidden: bool,
+        #[arg(long)]
+        refresh_prices: bool,
+        #[arg(long)]
+        offline: bool,
     },
     Modes {
         #[arg(long)]
         profile: Option<String>,
         #[arg(long)]
         region: Option<String>,
+    },
+    Prices {
+        #[command(subcommand)]
+        command: AwsPricesCommand,
+    },
+    ValidateProfile {
+        profile: String,
+        #[arg(long)]
+        aws_profile: Option<String>,
+        #[arg(long)]
+        region: Option<String>,
+        #[arg(long)]
+        instance: Option<String>,
+        #[arg(long)]
+        mode: Option<String>,
+        #[arg(long)]
+        accelerator: Option<String>,
+        #[arg(long)]
+        auto_approve: bool,
+        #[arg(long)]
+        keep_running: bool,
+        #[arg(long)]
+        acknowledge_unvalidated: bool,
+        #[arg(long)]
+        experimental: bool,
+        #[arg(long)]
+        show_hidden: bool,
     },
     #[command(hide = true)]
     Wake {
@@ -200,6 +235,20 @@ enum AwsCredentialsCommand {
     },
 }
 
+#[derive(Subcommand)]
+enum AwsPricesCommand {
+    Refresh {
+        #[arg(long)]
+        profile: Option<String>,
+        #[arg(long)]
+        region: Option<String>,
+    },
+    Show {
+        #[arg(long)]
+        region: Option<String>,
+    },
+}
+
 #[derive(Args)]
 struct AwsDeployCmd {
     #[arg(long)]
@@ -222,6 +271,12 @@ struct AwsDeployCmd {
     plan_only: bool,
     #[arg(long)]
     hf_token: Option<String>,
+    #[arg(long)]
+    acknowledge_unvalidated: bool,
+    #[arg(long)]
+    experimental: bool,
+    #[arg(long)]
+    show_hidden: bool,
 }
 
 #[derive(Args)]
@@ -726,8 +781,105 @@ async fn run_aws_command(
             let region = region.or(Some(backend.config.region.clone()));
             print_json(test_harness::check_aws_credentials(profile, region).await?);
         }
-        AwsCommand::Models { .. } => {
-            print_json(json!({"models": profiles::rows()?}));
+        AwsCommand::Models {
+            experimental,
+            show_hidden,
+            refresh_prices,
+            offline,
+            ..
+        } => {
+            let backend = AwsBackend::load_or_default(None)?;
+            let region = backend.config.region.clone();
+            let profile_name = backend.config.profile.clone();
+            let mut sections = profiles::menu_sections(experimental || show_hidden)?;
+            let instances = profile_instance_types(experimental || show_hidden)?;
+            let (cache, warnings) = if refresh_prices && !offline {
+                match pricing::refresh_cache(&region, &instances, profile_name.as_deref()).await {
+                    Ok(cache) => (Some(cache), Vec::new()),
+                    Err(err) => {
+                        let mut warnings = vec![format!(
+                            "pricing refresh failed for region '{}': {}",
+                            region, err
+                        )];
+                        let cache = pricing::load_cache(&region)?;
+                        if cache.is_some() {
+                            warnings.push(
+                                "showing stale pricing cache instead of blocking the command"
+                                    .to_string(),
+                            );
+                        }
+                        (cache, warnings)
+                    }
+                }
+            } else {
+                pricing::load_or_refresh(&region, &instances, profile_name.as_deref(), offline)
+                    .await?
+            };
+            if let Some(cache) = &cache {
+                let mut price_map = std::collections::HashMap::new();
+                for (instance, record) in &cache.records {
+                    price_map.insert(instance.clone(), record.clone());
+                }
+                for section in &mut sections {
+                    if let Some(profiles) = section["profiles"].as_array_mut() {
+                        for profile in profiles {
+                            let recommended = profile["recommended_instance"]
+                                .as_str()
+                                .unwrap_or_default()
+                                .to_string();
+                            let lower = profile["lower_cost_instance"]
+                                .as_str()
+                                .unwrap_or_default()
+                                .to_string();
+                            let safe = profile["safe_instance"]
+                                .as_str()
+                                .unwrap_or_default()
+                                .to_string();
+                            let economy_instance = if lower.is_empty() {
+                                recommended.clone()
+                            } else {
+                                lower.clone()
+                            };
+                            let balanced_instance = if safe.is_empty() {
+                                recommended.clone()
+                            } else {
+                                safe.clone()
+                            };
+                            let economy = price_map
+                                .get(&economy_instance)
+                                .and_then(|record| pricing::estimate_hourly(record, true))
+                                .map(|p| {
+                                    json!({
+                                        "instance_type": economy_instance,
+                                        "hourly_usd": p.hourly_usd,
+                                        "source": p.source,
+                                    })
+                                });
+                            let balanced = price_map
+                                .get(&balanced_instance)
+                                .and_then(|record| pricing::estimate_hourly(record, false))
+                                .map(|p| {
+                                    json!({
+                                        "instance_type": balanced_instance,
+                                        "hourly_usd": p.hourly_usd,
+                                        "source": p.source,
+                                    })
+                                });
+                            profile["price_estimates"] = json!({
+                                "economy": economy,
+                                "balanced": balanced,
+                            });
+                        }
+                    }
+                }
+            }
+            print_json(json!({
+                "public": !show_hidden,
+                "refresh_requested": refresh_prices && !offline,
+                "pricing_cache": pricing::summary_for_cache(cache),
+                "warnings": warnings,
+                "sections": sections
+            }));
         }
         AwsCommand::Modes { .. } => {
             print_json(json!({
@@ -735,8 +887,54 @@ async fn run_aws_command(
                 "caveat": "Benchmark results are workload and region dependent; Emberlane does not promise exact latency."
             }));
         }
+        AwsCommand::Prices { command } => match command {
+            AwsPricesCommand::Refresh { profile, region } => {
+                let backend = AwsBackend::load_or_default(None)?;
+                let region = region.unwrap_or_else(|| backend.config.region.clone());
+                let profile = profile.or(backend.config.profile.clone());
+                let instances = profile_instance_types(false)?;
+                let cache = pricing::refresh_cache(&region, &instances, profile.as_deref()).await?;
+                print_json(pricing::summary_for_cache(Some(cache)));
+            }
+            AwsPricesCommand::Show { region } => {
+                let backend = AwsBackend::load_or_default(None)?;
+                let region = region.unwrap_or_else(|| backend.config.region.clone());
+                let cache = pricing::load_cache(&region)?;
+                print_json(pricing::summary_for_cache(cache));
+            }
+        },
+        AwsCommand::ValidateProfile {
+            profile,
+            aws_profile,
+            region,
+            instance,
+            mode,
+            accelerator,
+            auto_approve,
+            keep_running,
+            acknowledge_unvalidated,
+            experimental,
+            show_hidden,
+        } => {
+            print_json(
+                test_harness::validate_aws_profile(test_harness::ValidateProfileOptions {
+                    profile,
+                    aws_profile,
+                    region,
+                    instance,
+                    mode,
+                    accelerator,
+                    auto_approve,
+                    keep_running,
+                    acknowledge_unvalidated,
+                    allow_hidden_profiles: experimental || show_hidden,
+                })
+                .await?,
+            );
+        }
         AwsCommand::PrintConfig => {
-            let backend = AwsBackend::load_or_default(None)?;
+            let mut backend = AwsBackend::load_or_default(None)?;
+            backend.config.acknowledge_unvalidated = true;
             print_json(backend.render_deploy_vars().await?);
         }
         AwsCommand::Deploy(cmd) => {
@@ -759,36 +957,41 @@ async fn run_aws_command(
             if model.is_none() {
                 let profiles_res = profiles::all_profiles()?;
                 let mut p_list = profiles_res.into_iter().collect::<Vec<_>>();
-                p_list.sort_by_key(|(name, _)| name.clone());
+                p_list.sort_by(|(name_a, a), (name_b, b)| {
+                    profiles::menu_sort_key(name_a, a).cmp(&profiles::menu_sort_key(name_b, b))
+                });
 
-                let prompts: Vec<String> = p_list
-                    .iter()
-                    .map(|(name, p)| {
-                        if name.ends_with("_economy") {
-                            format!(
-                                "{} ({}) [tight-memory profile, not AWS cost mode]",
-                                p.display_name, name
-                            )
-                        } else {
-                            format!("{} ({})", p.display_name, name)
-                        }
+                let selectable: Vec<_> = p_list
+                    .into_iter()
+                    .filter(|(_, p)| {
+                        let visibility = p.visibility.as_deref().unwrap_or("hidden");
+                        cmd.show_hidden
+                            || cmd.experimental
+                            || visibility == "recommended"
+                            || visibility == "advanced"
+                            || visibility == "optional"
                     })
+                    .collect();
+                if selectable.is_empty() {
+                    return Err(EmberlaneError::InvalidRequest(
+                        "no deployable model profiles are visible; pass --experimental or --show-hidden".to_string(),
+                    ));
+                }
+
+                let prompts: Vec<String> = selectable
+                    .iter()
+                    .map(|(name, p)| profiles::deploy_prompt_label(name, p))
                     .collect();
 
                 let selection = dialoguer::Select::new()
-                    .with_prompt("Select a model to deploy")
+                    .with_prompt("Select a model on an instance to deploy")
                     .items(&prompts)
-                    .default(
-                        p_list
-                            .iter()
-                            .position(|(name, _)| name == "qwen35_9b")
-                            .unwrap_or(0),
-                    )
+                    .default(0)
                     .interact()
                     .map_err(|e| EmberlaneError::Internal(e.to_string()))?;
 
-                let selected_name = p_list[selection].0.clone();
-                let selected_id = p_list[selection].1.model_id.clone();
+                let selected_name = selectable[selection].0.clone();
+                let selected_id = selectable[selection].1.model_id.clone();
                 model = Some(selected_name);
 
                 let is_gated = selected_id.starts_with("meta-llama/")
@@ -807,13 +1010,37 @@ async fn run_aws_command(
                 }
             }
 
+            let mut mode = cmd.mode;
+            if mode.is_none() {
+                let mode_selection = dialoguer::Select::new()
+                    .with_prompt("Choose cost mode")
+                    .items([
+                        "economy / spot (cheapest, scale-to-zero)",
+                        "balanced / on-demand (ready-first, scales down after idle)",
+                        "always-on / on-demand (never scales down)",
+                    ])
+                    .default(0)
+                    .interact()
+                    .map_err(|e| EmberlaneError::Internal(e.to_string()))?;
+                mode = Some(
+                    match mode_selection {
+                        0 => CostMode::Economy,
+                        1 => CostMode::Balanced,
+                        _ => CostMode::AlwaysOn,
+                    }
+                    .to_string(),
+                );
+            }
+
             let mut backend = AwsBackend::load_or_default(None)?.with_overrides(
                 model,
                 cmd.accelerator,
                 cmd.instance,
-                cmd.mode,
+                mode,
                 hf_token,
             )?;
+            backend.config.acknowledge_unvalidated = cmd.acknowledge_unvalidated;
+            backend.config.allow_hidden_profiles = cmd.experimental || cmd.show_hidden;
             if let Some(profile) = cmd.profile {
                 backend.config.profile = Some(profile);
             }
@@ -822,6 +1049,13 @@ async fn run_aws_command(
             }
             if let Some(ami_id) = cmd.ami_id {
                 backend.config.ami_id = ami_id;
+            }
+            if cmd.acknowledge_unvalidated {
+                if let Ok(profile_meta) = profiles::profile(&backend.config.model_profile) {
+                    if !profile_meta.validated {
+                        // acknowledgement captured via CLI flag; nothing else to do
+                    }
+                }
             }
             print_json(backend.deploy(cmd.auto_approve, cmd.plan_only).await?);
         }
@@ -1142,6 +1376,27 @@ fn local_router(config: Option<PathBuf>) -> Result<RuntimeRouter, EmberlaneError
     let router = RuntimeRouter::new(cfg, storage);
     router.seed_config_runtimes()?;
     Ok(router)
+}
+
+fn profile_instance_types(show_hidden: bool) -> Result<Vec<String>, EmberlaneError> {
+    let mut instances = std::collections::BTreeSet::new();
+    for (_, profile) in profiles::all_profiles()? {
+        let visibility = profile.visibility.as_deref().unwrap_or("hidden");
+        if !show_hidden && !matches!(visibility, "recommended" | "advanced" | "optional") {
+            continue;
+        }
+        instances.insert(profile.recommended_instance);
+        if let Some(instance) = profile.safe_instance {
+            instances.insert(instance);
+        }
+        if let Some(instance) = profile.lower_cost_instance {
+            instances.insert(instance);
+        }
+        for instance in profile.fallback_instances {
+            instances.insert(instance);
+        }
+    }
+    Ok(instances.into_iter().collect())
 }
 
 fn chat_request(message: String) -> ChatRequest {

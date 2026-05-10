@@ -44,9 +44,19 @@ Emberlane is designed to be useful by default and adjustable when you need it.
 
 Recommended AWS first path:
 
-- model: `qwen35_9b`
+- runtime: `vLLM CUDA`
+- model: `qwen3_8b_awq_32k_g5`
 - instance: `g5.2xlarge`
-- mode: `balanced` (starts ready, then scales down after idle)
+- mode: `economy` on Spot, or `balanced` when you want ready-first behavior
+
+Optional lower-cost Inf2 experiment:
+
+- runtime: `vLLM Neuron`
+- model: `qwen3_8b_inf2_4k`
+- instance: `inf2.xlarge`
+- mode: `economy` on Spot
+
+When you run `aws deploy` interactively, Emberlane now asks for the model on the instance first, then asks for cost mode next. The cost-mode prompt defaults to `economy / Spot`.
 
 Use `cargo run -- aws models` to inspect profiles, `cargo run -- aws modes` to inspect cost modes, and `cargo run -- aws print-config` to inspect the current AWS defaults before you deploy.
 
@@ -60,6 +70,8 @@ If you want to compare multiple models, deploy one profile at a time and use `aw
 - 🤖 MCP stdio for agent/tool integration
 - 🌐 HTTP API for apps and internal services
 - 🧩 OpenAI-compatible chat endpoints for existing clients
+
+For Aider setup, see [docs/aider.md](docs/aider.md). For the public model policy, see [docs/model-policy.md](docs/model-policy.md).
 
 ## Local Quickstart
 
@@ -83,8 +95,10 @@ cargo run -- aws credentials check --profile your-profile
 cargo run -- aws init --profile your-profile
 cargo run -- aws models
 cargo run -- aws modes
+cargo run -- aws prices show
 cargo run -- aws print-config
 cargo run -- aws deploy --profile your-profile --mode balanced
+cargo run -- aws validate-profile qwen3_8b_awq_32k_g5 --aws-profile your-profile --auto-approve
 cargo run -- aws chat "Explain scale-to-zero inference" --profile your-profile
 cargo run -- aws benchmark --profile your-profile
 cargo run -- aws cost-report --profile your-profile
@@ -92,6 +106,15 @@ cargo run -- aws destroy --profile your-profile
 ```
 
 If you want a guided deploy path, Emberlane renders Terraform variables, applies the stack, and stores the resolved endpoint in `aws/emberlane.aws.toml`.
+
+To refresh or inspect cached AWS pricing estimates:
+
+```sh
+cargo run -- aws prices refresh --region us-west-2
+cargo run -- aws prices show --region us-west-2
+cargo run -- aws models --refresh-prices
+cargo run -- aws models --offline
+```
 
 ## Multi-Model Workflow
 
@@ -105,8 +128,8 @@ Emberlane is designed so you can keep the defaults simple and still compare seve
 Example:
 
 ```sh
-cargo run -- aws deploy --profile your-profile --model qwen35_9b --mode balanced
-cargo run -- aws deploy --profile your-profile --model llama31_8b --mode economy
+cargo run -- aws deploy --profile your-profile --model qwen3_8b_awq_32k_g5 --mode balanced
+cargo run -- aws deploy --profile your-profile --model deepseek_r1_distill_qwen14b_64k --mode economy --experimental --acknowledge-unvalidated
 cargo run -- aws benchmark --profile your-profile
 ```
 
@@ -134,7 +157,7 @@ cargo run -- upload README.md docs/aws-deploy-from-zero.md
 Then ask a question about one or more uploaded documents:
 
 ```sh
-cargo run -- chat-files qwen35_9b <file_id_1> <file_id_2> --message "compare the AWS deployment notes"
+cargo run -- chat-files qwen3_8b_awq_32k_g5 <file_id_1> <file_id_2> --message "compare the AWS deployment notes"
 ```
 
 For a single document, `chat-file` still works:
@@ -149,13 +172,23 @@ Use `cargo run -- aws models` to list the available model profiles.
 
 Each profile describes one model and the hardware Emberlane recommends for it.
 
-Some profile keys end with `_economy` for historical reasons. Those are tighter-memory model profiles, not the AWS cost mode named `economy`.
+The public AWS runtime is `vLLM CUDA`.
 
-The default AWS CUDA path is `qwen35_9b` on `g5.2xlarge` in `balanced` mode. That is the recommended first path for public release.
+The default AWS CUDA path is `qwen3_8b_awq_32k_g5` (model id `Qwen/Qwen3-8B-AWQ`) on `g5.2xlarge` in `economy` mode. That is the recommended first path for public release.
 
-That default is tuned for text-only serving: Emberlane passes the profile-specific max context length, `--language-model-only`, and the Qwen3 reasoning parser so Qwen3.5 follows the official vLLM serving shape on the single-GPU `g5.2xlarge` path.
+That default is tuned for text-only serving: Emberlane passes the profile-specific max context length, quantization, and the Qwen3 reasoning parser so the single-GPU path stays practical.
 
-`balanced` is the default public-release operating point: one instance comes up ready, then Emberlane lets it sleep again after idle traffic drops away. `always-on` keeps the instance running after setup, and `economy` is the coldest on-demand path.
+`economy` is Spot + ready-first, `balanced` is On-Demand + ready-first, and `always-on` is On-Demand + never sleeps.
+
+Model selection guide:
+
+| Profile | Best for | Kind | Notes |
+| --- | --- | --- | --- |
+| `qwen3_8b_awq_32k_g5` | coding-simple, general research | text | public default, budget-friendly |
+| `qwen3_8b_inf2_4k` | coding-simple, lower-cost experiment | text | experimental Inf2 path, 4K public proof |
+| `qwen3_8b_awq_128k` | research-deep, long context | text | advanced long-context profile |
+| `gemma3_12b_128k` | research-general, image + text tasks | multimodal | use this when you want vision input |
+| `deepseek_r1_distill_qwen14b_64k` | coding-hard, reasoning | text | slower, more deliberate |
 
 Inf2/Neuron is supported for experimental evaluation, but it is not presented as universally cheaper. Use it when you want to benchmark the hardware tradeoffs yourself.
 
@@ -171,7 +204,7 @@ For multi-model comparison:
 
 | Mode | Default capacity | Warm pool | Pricing | Good for |
 | --- | --- | --- | --- | --- |
-| `economy` | min `0`, desired `0`, max `1` | Disabled | Spot | Cheapest cold-start path |
+| `economy` | min `0`, desired `1`, max `1` | Disabled | Spot | Ready on deploy, scales down after idle |
 | `balanced` | min `0`, desired `1`, max `1` | Disabled by default | On-demand | Ready on deploy, scales down after idle |
 | `always-on` | min `1`, desired `1`, max `1` | Disabled | On-demand | Never auto-sleeps |
 

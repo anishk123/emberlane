@@ -1,7 +1,7 @@
 use super::{
     model::{repo_root, Accelerator, CloudBackend, CloudDeployConfig, CloudProvider},
     modes::CostMode,
-    profiles,
+    pricing, profiles,
 };
 use crate::{
     config::{EmberlaneConfig, S3StorageConfig},
@@ -14,6 +14,20 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{fs, path::PathBuf, process::Stdio, time::Instant};
 use tokio::process::Command;
+
+fn shell_quote(value: &str) -> String {
+    if value.is_empty() {
+        "''".to_string()
+    } else if !value
+        .chars()
+        .any(|ch| ch.is_whitespace() || matches!(ch, '\'' | '"' | '$' | '`' | '\\'))
+    {
+        value.to_string()
+    } else {
+        let escaped = value.replace('\'', r"'\''");
+        format!("'{}'", escaped)
+    }
+}
 
 fn aws_config_path() -> PathBuf {
     repo_root().join("aws/emberlane.aws.toml")
@@ -137,6 +151,8 @@ impl AwsBackend {
             use_baked_ami: parsed.deploy.use_baked_ami,
             public_alb: parsed.deploy.public_alb,
             hf_token: None,
+            acknowledge_unvalidated: false,
+            allow_hidden_profiles: false,
         };
         Ok(Self {
             path,
@@ -184,6 +200,13 @@ impl AwsBackend {
             }
             if instance.is_none() {
                 self.config.instance_type = profile.recommended_instance;
+            }
+            if mode.is_none() {
+                if let Some(default_mode) = profile.default_mode.as_deref() {
+                    self.config.mode = default_mode
+                        .parse()
+                        .map_err(EmberlaneError::InvalidRequest)?;
+                }
             }
         }
         if let Some(acc) = accelerator {
@@ -392,16 +415,84 @@ impl AwsBackend {
     fn capacity_fallbacks(&self) -> Vec<String> {
         profiles::profile(&self.config.model_profile)
             .map(|p| {
-                let mut fallbacks = p.fallback_instances;
-                if !fallbacks
-                    .iter()
-                    .any(|value| value == &p.recommended_instance)
-                {
-                    fallbacks.insert(0, p.recommended_instance);
+                let mut fallbacks = vec![p.recommended_instance.clone()];
+                if let Some(safe_instance) = p.safe_instance {
+                    fallbacks.push(safe_instance);
                 }
+                if let Some(lower_cost_instance) = p.lower_cost_instance {
+                    fallbacks.push(lower_cost_instance);
+                }
+                fallbacks.extend(p.fallback_instances);
+                fallbacks.retain(|value| !value.trim().is_empty());
+                fallbacks.dedup();
                 fallbacks
             })
             .unwrap_or_default()
+    }
+
+    fn profile_visibility(profile: &profiles::ModelProfile) -> &str {
+        profile.visibility.as_deref().unwrap_or("hidden")
+    }
+
+    fn requires_acknowledgement(profile: &profiles::ModelProfile) -> bool {
+        !profile.validated && profile.require_user_acknowledgement_if_unvalidated
+    }
+
+    fn build_vllm_command(
+        profile: &profiles::ModelProfile,
+        accelerator: Accelerator,
+    ) -> Result<String, EmberlaneError> {
+        let mut args = vec![
+            "vllm".to_string(),
+            "serve".to_string(),
+            profile.model_id.clone(),
+            "--max-model-len".to_string(),
+            profile.max_model_len.to_string(),
+        ];
+        if accelerator == Accelerator::Cuda {
+            args.push("--safetensors-load-strategy=prefetch".to_string());
+        }
+        if let Some(quantization) = profile.quantization.as_ref() {
+            args.push("--quantization".to_string());
+            args.push(quantization.clone());
+        }
+        if let Some(rope_scaling) = profile.rope_scaling.as_ref() {
+            let rope_json = serde_json::to_string(rope_scaling).map_err(|err| {
+                EmberlaneError::Internal(format!("failed to render rope scaling: {err}"))
+            })?;
+            args.push("--rope-scaling".to_string());
+            args.push(rope_json);
+        }
+        if let Some(gpu_memory_utilization) = profile.gpu_memory_utilization {
+            args.push("--gpu-memory-utilization".to_string());
+            args.push(gpu_memory_utilization.to_string());
+        }
+        if profile.enforce_eager.unwrap_or(false) {
+            args.push("--enforce-eager".to_string());
+        }
+        if profile.language_model_only {
+            args.push("--language-model-only".to_string());
+        }
+        if let Some(reasoning_parser) = profile.reasoning_parser.as_ref() {
+            args.push("--reasoning-parser".to_string());
+            args.push(reasoning_parser.clone());
+        }
+        if let Some(tool_call_parser) = profile.tool_call_parser.as_ref() {
+            args.push("--tool-call-parser".to_string());
+            args.push(tool_call_parser.clone());
+        }
+        args.extend(profile.vllm_extra_args.clone());
+        args.extend([
+            "--host".to_string(),
+            "0.0.0.0".to_string(),
+            "--port".to_string(),
+            "8000".to_string(),
+        ]);
+        Ok(args
+            .into_iter()
+            .map(|arg| shell_quote(&arg))
+            .collect::<Vec<_>>()
+            .join(" "))
     }
 
     async fn ensure_instance_type_available(&self) -> Result<(), EmberlaneError> {
@@ -588,6 +679,18 @@ impl CloudBackend for AwsBackend {
                 self.config.model_profile, profile.recommended_instance, self.config.instance_type
             ));
         }
+        if Self::profile_visibility(&profile) == "hidden" {
+            warnings.push(format!(
+                "model profile '{}' is hidden and only intended for labs / compatibility testing.",
+                self.config.model_profile
+            ));
+        }
+        if Self::requires_acknowledgement(&profile) {
+            warnings.push(format!(
+                "model profile '{}' is not validated yet; deploys require --acknowledge-unvalidated until a validation artifact exists.",
+                self.config.model_profile
+            ));
+        }
         if self.config.accelerator == Accelerator::Inf2 {
             warnings.push(
                 "Inf2/Neuron is experimental in Emberlane; benchmark before claiming savings."
@@ -654,8 +757,32 @@ impl CloudBackend for AwsBackend {
     async fn render_deploy_vars(&self) -> Result<Value, EmberlaneError> {
         self.ensure_instance_type_available().await?;
         let profile = profiles::profile(&self.config.model_profile)?;
+        if Self::profile_visibility(&profile) == "hidden" && !self.config.allow_hidden_profiles {
+            return Err(EmberlaneError::InvalidRequest(format!(
+                "model profile '{}' is hidden; pass --experimental or --show-hidden to deploy it",
+                self.config.model_profile
+            )));
+        }
+        if Self::profile_visibility(&profile) == "hidden"
+            && Self::requires_acknowledgement(&profile)
+            && !self.config.acknowledge_unvalidated
+        {
+            return Err(EmberlaneError::InvalidRequest(format!(
+                "model profile '{}' is not yet validated; pass --acknowledge-unvalidated to deploy it",
+                self.config.model_profile
+            )));
+        }
         let mut vars = self.config.mode.terraform_values();
         let ami_id = self.resolve_ami_id().await?;
+        let rope_scaling_json = profile
+            .rope_scaling
+            .as_ref()
+            .map(serde_json::to_string)
+            .transpose()
+            .map_err(|err| {
+                EmberlaneError::Internal(format!("failed to render rope scaling: {err}"))
+            })?;
+        let vllm_command = Self::build_vllm_command(&profile, self.config.accelerator)?;
         let obj = vars.as_object_mut().unwrap();
         obj.insert("app_name".to_string(), json!("emberlane"));
         obj.insert("aws_region".to_string(), json!(self.config.region));
@@ -672,12 +799,47 @@ impl CloudBackend for AwsBackend {
         obj.insert("model_id".to_string(), json!(profile.model_id));
         obj.insert("max_model_len".to_string(), json!(profile.max_model_len));
         obj.insert(
+            "quantization".to_string(),
+            json!(profile.quantization.clone().unwrap_or_default()),
+        );
+        obj.insert(
+            "rope_scaling_json".to_string(),
+            json!(rope_scaling_json.unwrap_or_default()),
+        );
+        obj.insert(
+            "gpu_memory_utilization".to_string(),
+            json!(profile.gpu_memory_utilization.unwrap_or_default()),
+        );
+        obj.insert(
+            "enforce_eager".to_string(),
+            json!(profile.enforce_eager.unwrap_or(false)),
+        );
+        obj.insert(
+            "max_num_seqs".to_string(),
+            json!(profile.max_num_seqs.unwrap_or_default()),
+        );
+        obj.insert(
+            "block_size".to_string(),
+            json!(profile.block_size.unwrap_or_default()),
+        );
+        obj.insert(
+            "num_gpu_blocks_override".to_string(),
+            json!(profile
+                .num_gpu_blocks_override
+                .unwrap_or_else(|| profile.max_num_seqs.unwrap_or_default())),
+        );
+        obj.insert(
+            "vllm_extra_args".to_string(),
+            json!(profile.vllm_extra_args.join(" ")),
+        );
+        obj.insert("vllm_command".to_string(), json!(vllm_command));
+        obj.insert(
             "language_model_only".to_string(),
             json!(profile.language_model_only),
         );
         obj.insert(
             "reasoning_parser".to_string(),
-            json!(profile.reasoning_parser.unwrap_or_default()),
+            json!(profile.reasoning_parser.clone().unwrap_or_default()),
         );
         obj.insert(
             "instance_type".to_string(),
@@ -695,6 +857,42 @@ impl CloudBackend for AwsBackend {
             "emberlane_test_run".to_string(),
             json!(self.config.environment),
         );
+        obj.insert(
+            "visibility".to_string(),
+            json!(Self::profile_visibility(&profile)),
+        );
+        obj.insert(
+            "validation_status".to_string(),
+            json!(profile
+                .validation_status
+                .clone()
+                .unwrap_or_else(|| "needs_emberlane_validation".to_string())),
+        );
+        obj.insert("validated".to_string(), json!(profile.validated));
+        obj.insert(
+            "task_group".to_string(),
+            json!(profile.task_group.clone().unwrap_or_default()),
+        );
+        obj.insert(
+            "instance_group".to_string(),
+            json!(profile.instance_group.clone().unwrap_or_default()),
+        );
+        obj.insert(
+            "default_mode".to_string(),
+            json!(profile.default_mode.clone().unwrap_or_default()),
+        );
+        obj.insert(
+            "default_pricing".to_string(),
+            json!(profile.default_pricing.clone().unwrap_or_default()),
+        );
+        obj.insert(
+            "balanced_pricing".to_string(),
+            json!(profile.balanced_pricing.clone().unwrap_or_default()),
+        );
+        obj.insert(
+            "serving_modality".to_string(),
+            json!(profile.serving_modality.clone().unwrap_or_default()),
+        );
         if let Some(profile) = &self.config.profile {
             obj.insert("aws_profile".to_string(), json!(profile));
         }
@@ -705,6 +903,7 @@ impl CloudBackend for AwsBackend {
         } else {
             0
         };
+        let asg_desired_capacity = 1;
         obj.insert("enable_warm_pool".to_string(), json!(enable_warm_pool));
         obj.insert(
             "enable_idle_scale_down".to_string(),
@@ -717,6 +916,10 @@ impl CloudBackend for AwsBackend {
         obj.insert(
             "warm_pool_min_size".to_string(),
             json!(if enable_warm_pool { 1 } else { 0 }),
+        );
+        obj.insert(
+            "asg_desired_capacity".to_string(),
+            json!(asg_desired_capacity),
         );
         obj.insert("desired_capacity_on_wake".to_string(), json!(1));
         obj.insert(
@@ -767,6 +970,7 @@ impl CloudBackend for AwsBackend {
                 "ok": true,
                 "plan_only": true,
                 "tfvars": self.tfvars_path(),
+                "vllm_command": vars.get("vllm_command").cloned().unwrap_or_else(|| json!("")),
                 "message": "rendered Terraform variables; run terraform plan/apply when ready"
             }));
         }
@@ -915,18 +1119,32 @@ impl CloudBackend for AwsBackend {
     }
 
     async fn cost_report(&self) -> Result<Value, EmberlaneError> {
+        let cache = pricing::load_cache(&self.config.region)?;
+        let record = cache
+            .as_ref()
+            .and_then(|cache| cache.records.get(&self.config.instance_type));
+        let economy = record.and_then(|record| pricing::estimate_hourly(record, true));
+        let balanced = record.and_then(|record| pricing::estimate_hourly(record, false));
         Ok(json!({
             "cloud_provider": "aws",
             "accelerator": self.config.accelerator,
             "model_profile": self.config.model_profile,
             "instance_type": self.config.instance_type,
             "mode": self.config.mode,
-            "pricing_configured": false,
+            "pricing_configured": record.is_some(),
             "savings_claimed": false,
-            "message": "No pricing file is configured, so Emberlane will not claim savings.",
+            "message": if record.is_some() {
+                "Pricing cache loaded successfully; estimates are informational only."
+            } else {
+                "No pricing file is configured, so Emberlane will not claim savings."
+            },
+            "estimated_hourly": {
+                "economy": economy.map(|p| json!({"hourly_usd": p.hourly_usd, "source": p.source})),
+                "balanced": balanced.map(|p| json!({"hourly_usd": p.hourly_usd, "source": p.source}))
+            },
             "comparison": [
-                {"mode": "economy", "concept": "lowest idle infrastructure cost; coldest wake path"},
-                {"mode": "balanced", "concept": "starts ready, then scales down after idle"},
+                {"mode": "economy", "concept": "starts ready on Spot, then scales down after idle"},
+                {"mode": "balanced", "concept": "starts ready on On-Demand, then scales down after idle"},
                 {"mode": "always-on", "concept": "keeps one instance running and does not auto-scale down on idle"}
             ]
         }))

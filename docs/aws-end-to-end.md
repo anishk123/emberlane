@@ -18,7 +18,7 @@ Client
 2. Start with CUDA/G5 for the first path, or Inf2/Neuron for experimental cost-optimization work.
 3. Bake an AMI or create a launch template that installs the runtime pack.
 4. Create an ALB target group on port `8080` with health path `/health`.
-5. Create an ASG with min `0`, desired `1` for `balanced` or `0` for `economy`, max `1`.
+5. Create an ASG with min `0`, desired `1` for `balanced` or `economy`, max `1`.
 6. Optionally add a Warm Pool in stopped or hibernated state only if you explicitly want that extra prepared-capacity tradeoff.
 7. Configure Emberlane with the `inf2-llama` `aws_asg` runtime.
 8. Deploy Lambda WakeBridge.

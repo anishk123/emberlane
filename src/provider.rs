@@ -613,8 +613,7 @@ impl AwsAsgProvider {
         }
     }
 
-    pub async fn status(&self, runtime: &RuntimeConfig) -> Result<Value, EmberlaneError> {
-        let cfg = parse_aws_asg_config(runtime)?;
+    async fn describe_asg(&self, cfg: &AwsAsgConfig) -> Result<Value, EmberlaneError> {
         let mut asg_args = vec![
             "autoscaling".to_string(),
             "describe-auto-scaling-groups".to_string(),
@@ -623,18 +622,23 @@ impl AwsAsgProvider {
             "--region".to_string(),
             cfg.region.clone(),
         ];
-        add_profile_args(&mut asg_args, &cfg);
-        let asg_output = self.runner.run(&cfg.aws_cli, &asg_args).await?;
-        if asg_output.status != 0 {
+        add_profile_args(&mut asg_args, cfg);
+        let output = self.runner.run(&cfg.aws_cli, &asg_args).await?;
+        if output.status != 0 {
             return Err(EmberlaneError::ProviderNotConfigured(format!(
                 "failed to describe ASG '{}': {}",
                 cfg.asg_name,
-                clean_stderr(&asg_output.stderr)
+                clean_stderr(&output.stderr)
             )));
         }
-        let asg_json: Value = serde_json::from_str(&asg_output.stdout).map_err(|err| {
+        serde_json::from_str(&output.stdout).map_err(|err| {
             EmberlaneError::InvalidRequest(format!("failed to parse AWS ASG status JSON: {err}"))
-        })?;
+        })
+    }
+
+    pub async fn status(&self, runtime: &RuntimeConfig) -> Result<Value, EmberlaneError> {
+        let cfg = parse_aws_asg_config(runtime)?;
+        let asg_json = self.describe_asg(&cfg).await?;
         let mut status = parse_asg_status(&cfg, &asg_json)?;
 
         let mut warm_args = vec![
@@ -674,6 +678,34 @@ impl RuntimeProvider for AwsAsgProvider {
             return Ok(());
         }
         let cfg = parse_aws_asg_config(runtime)?;
+        let asg_json = self.describe_asg(&cfg).await?;
+        let status = parse_asg_status(&cfg, &asg_json)?;
+        let desired_capacity = status
+            .get("desired_capacity")
+            .and_then(Value::as_i64)
+            .unwrap_or_default();
+        let in_service_count = status
+            .get("in_service_count")
+            .and_then(Value::as_i64)
+            .unwrap_or_default();
+        let instance_count = status
+            .get("instances")
+            .and_then(Value::as_array)
+            .map(|instances| instances.len())
+            .unwrap_or_default();
+        if desired_capacity == cfg.desired_capacity_on_wake
+            && in_service_count == 0
+            && instance_count == 0
+        {
+            let reconcile_floor = if cfg.desired_capacity_on_sleep == cfg.desired_capacity_on_wake
+                && cfg.desired_capacity_on_wake > 0
+            {
+                0
+            } else {
+                cfg.desired_capacity_on_sleep
+            };
+            self.set_desired_capacity(&cfg, reconcile_floor).await?;
+        }
         self.set_desired_capacity(&cfg, cfg.desired_capacity_on_wake)
             .await?;
         poll_health(self, runtime, runtime.startup_timeout_secs)
@@ -1188,18 +1220,40 @@ mod tests {
         });
 
         let runner = Arc::new(FakeCommandRunner::default());
+        runner
+            .push_output(CommandOutput {
+                status: 0,
+                stdout: json!({
+                    "AutoScalingGroups": [{
+                        "AutoScalingGroupName": "emberlane-echo-asg",
+                        "DesiredCapacity": 1,
+                        "MinSize": 0,
+                        "MaxSize": 1,
+                        "Instances": []
+                    }]
+                })
+                .to_string(),
+                stderr: String::new(),
+            })
+            .await;
         let provider = AwsAsgProvider::new(Arc::new(StaticHttpProvider::default()), runner.clone());
         let mut rt = aws_runtime();
         rt.base_url = Some(format!("http://{addr}"));
         provider.wake(&rt).await.unwrap();
         provider.sleep(&rt).await.unwrap();
         let calls = runner.calls().await;
-        assert_eq!(calls.len(), 2);
+        assert_eq!(calls.len(), 4);
         assert_eq!(calls[0].0, "aws");
-        assert!(calls[0].1.contains(&"set-desired-capacity".to_string()));
-        assert!(calls[0].1.contains(&"1".to_string()));
-        assert!(calls[0].1.contains(&"--profile".to_string()));
+        assert!(calls[0]
+            .1
+            .contains(&"describe-auto-scaling-groups".to_string()));
+        assert!(calls[1].1.contains(&"set-desired-capacity".to_string()));
         assert!(calls[1].1.contains(&"0".to_string()));
+        assert!(calls[2].1.contains(&"set-desired-capacity".to_string()));
+        assert!(calls[2].1.contains(&"1".to_string()));
+        assert!(calls[3].1.contains(&"set-desired-capacity".to_string()));
+        assert!(calls[0].1.contains(&"--profile".to_string()));
+        assert!(calls[3].1.contains(&"0".to_string()));
     }
 
     #[tokio::test]

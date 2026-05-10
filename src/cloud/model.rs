@@ -97,6 +97,8 @@ pub struct CloudDeployConfig {
     pub use_baked_ami: bool,
     pub public_alb: bool,
     pub hf_token: Option<String>,
+    pub acknowledge_unvalidated: bool,
+    pub allow_hidden_profiles: bool,
 }
 
 impl Default for CloudDeployConfig {
@@ -108,14 +110,16 @@ impl Default for CloudDeployConfig {
             environment: "dev".to_string(),
             accelerator: Accelerator::Cuda,
             instance_type: "g5.2xlarge".to_string(),
-            model_profile: "qwen35_9b".to_string(),
-            mode: crate::cloud::modes::CostMode::Balanced,
+            model_profile: "qwen3_8b_awq_32k_g5".to_string(),
+            mode: crate::cloud::modes::CostMode::Economy,
             terraform_dir: terraform_dir(),
             api_key: Some("dev-secret".to_string()),
             ami_id: String::new(),
             use_baked_ami: false,
             public_alb: true,
             hf_token: None,
+            acknowledge_unvalidated: false,
+            allow_hidden_profiles: false,
         }
     }
 }

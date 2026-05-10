@@ -14,6 +14,7 @@ The first success path is `llama32_1b`:
 
 `qwen25_15b` is included as experimental until validated on Inf2.
 `qwen3_4b` is the first conservative Qwen3 Inf2 starting point and uses `Qwen/Qwen3-4B-Instruct-2507` on `inf2.xlarge`.
+`qwen3_8b_inf2_4k` is the first Qwen3-8B Inf2 experiment. It uses a local checkpoint path, `max_model_len=4096`, `max_num_seqs=8`, `block_size=32`, and `num_gpu_blocks_override=8` on `inf2.xlarge`.
 
 ## Files
 
@@ -49,6 +50,7 @@ NEURON_COMPILED_ARTIFACTS=/opt/emberlane/neuron-cache
 ```
 
 For Qwen3 Inf2 experiments, use `MODEL_PROFILE=qwen3_4b`.
+For the Qwen3-8B Inf2 experiment, use `MODEL_PROFILE=qwen3_8b_inf2_4k`.
 
 5. Run:
 

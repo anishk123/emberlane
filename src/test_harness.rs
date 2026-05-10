@@ -64,6 +64,19 @@ pub struct AwsMatrixOptions {
     pub allow: bool,
 }
 
+pub struct ValidateProfileOptions {
+    pub profile: String,
+    pub aws_profile: Option<String>,
+    pub region: Option<String>,
+    pub instance: Option<String>,
+    pub mode: Option<String>,
+    pub accelerator: Option<String>,
+    pub auto_approve: bool,
+    pub keep_running: bool,
+    pub acknowledge_unvalidated: bool,
+    pub allow_hidden_profiles: bool,
+}
+
 pub struct CleanupOptions {
     pub environment: Option<String>,
     pub test_run: Option<PathBuf>,
@@ -491,6 +504,258 @@ pub async fn run_aws_matrix_test(opts: AwsMatrixOptions) -> Result<HarnessReport
     })
 }
 
+pub async fn validate_aws_profile(opts: ValidateProfileOptions) -> Result<Value, EmberlaneError> {
+    let started = util::now();
+    let safe_profile = sanitize(&opts.profile);
+    let region_label = opts
+        .region
+        .clone()
+        .unwrap_or_else(|| "us-west-2".to_string());
+    let mode_label = opts.mode.clone().unwrap_or_else(|| "economy".to_string());
+    let run_id = timestamp();
+    let run_dir = PathBuf::from("profiles")
+        .join("validation")
+        .join(&safe_profile)
+        .join(util::now().format("%Y-%m-%d").to_string())
+        .join(format!(
+            "{}-{}-{}",
+            region_label,
+            opts.instance
+                .clone()
+                .unwrap_or_else(|| "default".to_string()),
+            mode_label
+        ));
+    fs::create_dir_all(&run_dir)?;
+
+    let mut backend = AwsBackend::load_or_default(None)?.with_overrides(
+        Some(opts.profile.clone()),
+        opts.accelerator.clone(),
+        opts.instance.clone(),
+        opts.mode.clone(),
+        None,
+    )?;
+    backend.config.environment = format!("emberlane-validation-{}-{run_id}", safe_profile);
+    backend.config.acknowledge_unvalidated = opts.acknowledge_unvalidated;
+    backend.config.allow_hidden_profiles = opts.allow_hidden_profiles;
+    if let Some(region) = &opts.region {
+        backend.config.region = region.clone();
+    }
+    if let Some(profile) = &opts.aws_profile {
+        backend.config.profile = Some(profile.clone());
+    }
+
+    let render_vars = backend.render_deploy_vars().await?;
+    let mut steps = vec![step("render_tfvars", true, render_vars.clone())];
+    let mut ok = true;
+
+    let deploy_started = Instant::now();
+    let deploy = backend.deploy(opts.auto_approve, false).await;
+    match deploy {
+        Ok(value) => {
+            ok &= terraform_result_ok(&value);
+            steps.push(step("deploy", ok, value));
+        }
+        Err(err) => {
+            ok = false;
+            steps.push(step("deploy", false, json!({"error": err.to_string()})));
+        }
+    }
+
+    let mut endpoint = None;
+    if ok {
+        match backend.endpoint_url().await {
+            Ok(url) => {
+                endpoint = Some(url.clone());
+                steps.push(step("endpoint", true, json!({"url": url})));
+            }
+            Err(err) => {
+                ok = false;
+                steps.push(step("endpoint", false, json!({"error": err.to_string()})));
+            }
+        }
+    }
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(120))
+        .build()
+        .map_err(|err| EmberlaneError::Internal(err.to_string()))?;
+    let api_key = backend
+        .config
+        .api_key
+        .clone()
+        .unwrap_or_else(|| "dev-secret".to_string());
+    let auth_headers = |request: reqwest::RequestBuilder| {
+        request
+            .header("Authorization", format!("Bearer {api_key}"))
+            .header("x-api-key", &api_key)
+    };
+
+    if let Some(endpoint) = &endpoint {
+        let models_url = util::join_url(endpoint, "/v1/models");
+        let models_resp = auth_headers(client.get(&models_url)).send().await;
+        match models_resp {
+            Ok(resp) => {
+                let status = resp.status().as_u16();
+                let body_text = resp.text().await.unwrap_or_default();
+                let body = serde_json::from_str::<Value>(&body_text)
+                    .unwrap_or_else(|_| json!({"text": body_text}));
+                steps.push(step(
+                    "models",
+                    status < 400,
+                    json!({"url": models_url, "status": status, "body": body}),
+                ));
+                ok &= status < 400;
+            }
+            Err(err) => {
+                ok = false;
+                steps.push(step(
+                    "models",
+                    false,
+                    json!({"url": models_url, "error": err.to_string()}),
+                ));
+            }
+        }
+
+        let chat_url = util::join_url(endpoint, "/v1/chat/completions");
+        let base_chat = json!({
+            "model": format!("openai/{}", opts.profile),
+            "messages": [{"role": "user", "content": "Say hello in one sentence."}],
+            "max_tokens": 64
+        });
+
+        let non_stream = auth_headers(client.post(&chat_url).json(&base_chat))
+            .send()
+            .await;
+        match non_stream {
+            Ok(resp) => {
+                let status = resp.status().as_u16();
+                let body_text = resp.text().await.unwrap_or_default();
+                let body = serde_json::from_str::<Value>(&body_text)
+                    .unwrap_or_else(|_| json!({"text": body_text}));
+                steps.push(step(
+                    "chat_non_stream",
+                    status < 400,
+                    json!({"url": chat_url, "status": status, "body": body}),
+                ));
+                ok &= status < 400;
+            }
+            Err(err) => {
+                ok = false;
+                steps.push(step(
+                    "chat_non_stream",
+                    false,
+                    json!({"url": chat_url, "error": err.to_string()}),
+                ));
+            }
+        }
+
+        let streaming_body = json!({
+            "model": format!("openai/{}", opts.profile),
+            "messages": [{"role": "user", "content": "Stream a one-sentence greeting."}],
+            "max_tokens": 64,
+            "stream": true
+        });
+        let streaming = auth_headers(client.post(&chat_url).json(&streaming_body))
+            .send()
+            .await;
+        match streaming {
+            Ok(resp) => {
+                let status = resp.status().as_u16();
+                let body_text = resp.text().await.unwrap_or_default();
+                steps.push(step(
+                    "chat_stream",
+                    status < 400,
+                    json!({"url": chat_url, "status": status, "body": body_text}),
+                ));
+                ok &= status < 400;
+            }
+            Err(err) => {
+                ok = false;
+                steps.push(step(
+                    "chat_stream",
+                    false,
+                    json!({"url": chat_url, "error": err.to_string()}),
+                ));
+            }
+        }
+
+        let render = render_vars.clone();
+        let max_len = render["max_model_len"].as_u64().unwrap_or(1024);
+        let smoke_tokens = ((max_len as f64) * 0.75).round() as usize;
+        let smoke_prompt = std::iter::repeat_n("emberlane", smoke_tokens.max(1))
+            .collect::<Vec<_>>()
+            .join(" ");
+        let smoke_body = json!({
+            "model": format!("openai/{}", opts.profile),
+            "messages": [{"role": "user", "content": smoke_prompt}],
+            "max_tokens": 16
+        });
+        let smoke = auth_headers(client.post(&chat_url).json(&smoke_body))
+            .send()
+            .await;
+        match smoke {
+            Ok(resp) => {
+                let status = resp.status().as_u16();
+                let body_text = resp.text().await.unwrap_or_default();
+                let body = serde_json::from_str::<Value>(&body_text)
+                    .unwrap_or_else(|_| json!({"text": body_text}));
+                steps.push(step(
+                    "context_smoke",
+                    status < 400,
+                    json!({"url": chat_url, "status": status, "body": body}),
+                ));
+                ok &= status < 400;
+            }
+            Err(err) => {
+                ok = false;
+                steps.push(step(
+                    "context_smoke",
+                    false,
+                    json!({"url": chat_url, "error": err.to_string()}),
+                ));
+            }
+        }
+    }
+
+    steps.push(step(
+        "startup_time",
+        true,
+        json!({"elapsed_ms": deploy_started.elapsed().as_millis()}),
+    ));
+
+    if !opts.keep_running {
+        match backend.destroy(true).await {
+            Ok(value) => steps.push(step("destroy", true, value)),
+            Err(err) => {
+                ok = false;
+                steps.push(step("destroy", false, json!({"error": err.to_string()})));
+            }
+        }
+    }
+
+    let summary = json!({
+        "kind": "validation",
+        "ok": ok,
+        "profile": opts.profile,
+        "region": backend.config.region,
+        "instance_type": backend.config.instance_type,
+        "model_id": render_vars["model_id"],
+        "quantization": render_vars["quantization"],
+        "max_model_len": render_vars["max_model_len"],
+        "vllm_command": render_vars["vllm_command"],
+        "mode": backend.config.mode,
+        "started_at": started,
+        "finished_at": util::now(),
+        "artifact": {
+            "path": run_dir.join("report.json"),
+            "directory": run_dir,
+        },
+        "steps": steps
+    });
+    write_report(&run_dir, "report", &summary)?;
+    Ok(summary)
+}
+
 pub async fn check_aws_credentials(
     profile: Option<String>,
     region: Option<String>,
@@ -876,6 +1141,7 @@ experimental = true
     async fn terraform_vars_include_unique_environment_and_test_run() {
         let mut backend = AwsBackend::load_or_default(Some(PathBuf::from("missing.toml"))).unwrap();
         backend.config.environment = "emberlane-it-tiny-demo-20260505".to_string();
+        backend.config.acknowledge_unvalidated = true;
         let vars = backend.render_deploy_vars().await.unwrap();
         assert_eq!(vars["environment"], "emberlane-it-tiny-demo-20260505");
         assert_eq!(

@@ -40,6 +40,8 @@ fn inf2_runtime_pack_files_exist_and_models_are_defined() {
     assert!(models.contains("status: \"experimental\""));
     assert!(models.contains("qwen3_4b"));
     assert!(models.contains("Qwen/Qwen3-4B-Instruct-2507"));
+    assert!(models.contains("qwen3_8b_inf2_4k"));
+    assert!(models.contains("Qwen/Qwen3-8B"));
 }
 
 #[test]
@@ -85,6 +87,23 @@ fn render_env_outputs_llama_and_qwen_profiles() {
     assert!(text.contains("Qwen/Qwen3-4B-Instruct-2507"));
     assert!(text.contains("\"INSTANCE_TYPE\": \"inf2.xlarge\""));
     assert!(text.contains("\"STATUS\": \"experimental\""));
+
+    let qwen3_8b = Command::new("python3")
+        .arg(&script)
+        .arg("--profile")
+        .arg("qwen3_8b_inf2_4k")
+        .arg("--format")
+        .arg("json")
+        .output()
+        .unwrap();
+    assert!(qwen3_8b.status.success());
+    let text = String::from_utf8(qwen3_8b.stdout).unwrap();
+    assert!(text.contains("Qwen/Qwen3-8B"));
+    assert!(text.contains("\"INSTANCE_TYPE\": \"inf2.xlarge\""));
+    assert!(text.contains("\"MAX_MODEL_LEN\": \"4096\""));
+    assert!(text.contains("\"MAX_NUM_SEQS\": \"8\""));
+    assert!(text.contains("\"BLOCK_SIZE\": \"32\""));
+    assert!(text.contains("\"NUM_GPU_BLOCKS_OVERRIDE\": \"8\""));
 }
 
 #[test]
@@ -97,6 +116,8 @@ fn start_server_contains_required_vllm_neuron_flags() {
         "--block-size",
         "--max-model-len",
         "--max-num-seqs",
+        "--num-gpu-blocks-override",
+        "--no-enable-prefix-caching",
         "--host 0.0.0.0",
         "--port",
         "S3_NEURON_ARTIFACTS_URI",
@@ -163,6 +184,7 @@ fn docs_and_config_include_inf2_llama() {
     assert!(read("docs/inf2-runtime.md").contains("meta-llama/Llama-3.2-1B"));
     assert!(read("docs/aws-end-to-end.md").contains("Lambda VPC streaming limitation"));
     assert!(read("docs/inf2-runtime.md").contains("qwen3_4b"));
+    assert!(read("docs/inf2-runtime.md").contains("qwen3_8b_inf2_4k"));
 }
 
 #[allow(dead_code)]

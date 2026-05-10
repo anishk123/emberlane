@@ -43,3 +43,19 @@ models:
     block_size: 16
     device: "neuron"
     status: "experimental"
+
+  qwen3_8b_inf2_4k:
+    model_id: "Qwen/Qwen3-8B"
+    display_name: "Qwen 3 8B (Neuron 4K)"
+    runtime: "vllm-neuron"
+    instance_type: "inf2.xlarge"
+    port: 8000
+    openai_base_path: "/v1"
+    health_check: "/health"
+    tensor_parallel_size: 2
+    max_model_len: 4096
+    max_num_seqs: 8
+    num_gpu_blocks_override: 8
+    block_size: 32
+    device: "neuron"
+    status: "experimental"

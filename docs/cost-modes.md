@@ -9,12 +9,12 @@ cargo run -- aws modes
 ## economy
 
 - ASG min `0`
-- desired `0`
+- desired `1`
 - max `1`
 - Warm Pool disabled
 - Spot instances
 - Lowest idle cost expectation
-- Coldest wake path
+- Starts ready, then scales down after idle
 - Idle scale-down enabled
 
 ## balanced
@@ -41,4 +41,6 @@ cargo run -- aws modes
 
 Emberlane does not claim exact wake latency or cost savings. Use `emberlane aws benchmark` and real pricing inputs before making decisions.
 
-`balanced` is the ready-on-deploy default; `economy` is the coldest path; `always-on` keeps one instance up and never auto-sleeps. Warm Pool is available as an advanced Terraform option, but it is not part of the default balanced semantics.
+`economy` is the ready-on-deploy Spot path; `balanced` is the ready-on-deploy On-Demand path; `always-on` keeps one instance up and never auto-sleeps. Warm Pool is available as an advanced Terraform option, but it is not part of the default semantics.
+
+If you prefer the more direct wording, `--mode on-demand` and `--mode on_demand` both map to `balanced`.

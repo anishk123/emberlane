@@ -23,7 +23,7 @@ case "$OS_ID" in
         PM="apt-get"
         export DEBIAN_FRONTEND=noninteractive
         apt-get update -y
-        deps=(curl jq unzip)
+        deps=(curl jq unzip snapd python3-pip)
         if ! command -v docker >/dev/null 2>&1; then
             deps+=(docker.io)
         fi
@@ -32,7 +32,7 @@ case "$OS_ID" in
         ;;
     amzn|al2023)
         PM="dnf"
-        deps=(curl jq unzip)
+        deps=(curl jq unzip python3-pip)
         if ! command -v docker >/dev/null 2>&1; then
             deps+=(docker)
         fi
@@ -43,6 +43,30 @@ case "$OS_ID" in
         echo "[emberlane] WARNING: Unsupported OS $OS_ID. Attempting to proceed with basic tools."
         ;;
 esac
+
+ensure_ssm_agent() {
+    case "$OS_ID" in
+        ubuntu)
+            if ! snap list amazon-ssm-agent >/dev/null 2>&1; then
+                echo "[emberlane] installing SSM agent via snap"
+                snap install amazon-ssm-agent --classic || true
+            fi
+            systemctl enable --now snap.amazon-ssm-agent.amazon-ssm-agent.service >/dev/null 2>&1 || true
+            snap start amazon-ssm-agent >/dev/null 2>&1 || true
+            ;;
+        amzn|al2023)
+            if ! rpm -q amazon-ssm-agent >/dev/null 2>&1; then
+                echo "[emberlane] installing SSM agent via rpm"
+                dnf install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm \
+                  || yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm \
+                  || true
+            fi
+            systemctl enable --now amazon-ssm-agent >/dev/null 2>&1 || true
+            ;;
+    esac
+}
+
+ensure_ssm_agent
 
 # 3. Preflight Diagnostic Block
 echo "[emberlane] --- PREFLIGHT LOGS ---"
@@ -70,6 +94,12 @@ cat >/etc/emberlane/inf2.env <<'ENV'
 MODEL_PROFILE=${model_profile}
 MODEL_ID=${model_id}
 MAX_MODEL_LEN=${max_model_len}
+QUANTIZATION=${quantization}
+ROPE_SCALING_JSON=${rope_scaling_json}
+GPU_MEMORY_UTILIZATION=${gpu_memory_utilization}
+ENFORCE_EAGER=${enforce_eager}
+VLLM_EXTRA_ARGS=${vllm_extra_args}
+VLLM_COMMAND=${vllm_command}
 LANGUAGE_MODEL_ONLY=${language_model_only}
 REASONING_PARSER=${reasoning_parser}
 ACCELERATOR=${accelerator}
@@ -100,17 +130,11 @@ fi
 # 5. Runtime Launch Logic
 if [[ "${accelerator}" == "cuda" ]]; then
     echo "[emberlane] Preparing CUDA vLLM service"
-    IMAGE="vllm/vllm-openai:latest"
-    GPU_FLAGS="--gpus all"
-    LANGUAGE_MODEL_ONLY_FLAG=""
-    if [[ "${language_model_only}" == "true" ]]; then
-        LANGUAGE_MODEL_ONLY_FLAG="--language-model-only"
-    fi
-    REASONING_PARSER_FLAG=""
-    if [[ -n "${reasoning_parser}" ]]; then
-        REASONING_PARSER_FLAG="--reasoning-parser ${reasoning_parser}"
-    fi
-    CMD_ARGS="--model ${model_id} --max-model-len ${max_model_len} --safetensors-load-strategy=prefetch $LANGUAGE_MODEL_ONLY_FLAG $REASONING_PARSER_FLAG --host 0.0.0.0 --port 8000"
+IMAGE="vllm/vllm-openai:latest"
+GPU_FLAGS="--gpus all"
+# Emberlane builds the command with safetensors prefetch on CUDA so the instance
+# spends less time blocked on weight loads during startup.
+CMD_ARGS="${vllm_command}"
     
     cat >/etc/systemd/system/emberlane-runtime.service <<UNIT
 [Unit]
@@ -149,7 +173,26 @@ elif [[ "${accelerator}" == "inf2" ]]; then
     
     # Official AWS Neuron vLLM Image
     IMAGE="public.ecr.aws/neuron/pytorch-inference-vllm-neuronx:0.16.0-neuronx-py312-sdk2.29.1-ubuntu24.04"
-    CMD_ARGS="python3 -m vllm.entrypoints.openai.api_server --model ${model_id} --max-model-len ${max_model_len} --block-size 128 --host 0.0.0.0 --port 8000"
+    if ! python3 - <<'PY' >/dev/null 2>&1
+import huggingface_hub
+PY
+    then
+        python3 -m pip install --upgrade pip >/dev/null 2>&1
+        python3 -m pip install huggingface_hub >/dev/null 2>&1
+    fi
+    MODEL_LOCAL_PATH="$(python3 - <<'PY'
+import os
+from huggingface_hub import snapshot_download
+
+path = snapshot_download(
+    repo_id="${model_id}",
+    cache_dir=os.environ.get("HF_HOME", "/opt/emberlane/model-cache"),
+    token=os.environ.get("HF_TOKEN") or None,
+)
+print(path)
+PY
+)"
+    CMD_ARGS="$(printf '%s' "${vllm_command}" | sed "s|${model_id}|${MODEL_LOCAL_PATH}|")"
 
     cat >/etc/systemd/system/emberlane-runtime.service <<UNIT
 [Unit]
@@ -173,11 +216,7 @@ ExecStart=/usr/bin/docker run --rm --name emberlane-vllm \
   -e TRANSFORMERS_CACHE=/opt/emberlane/model-cache \
   -e XDG_CACHE_HOME=/opt/emberlane/model-cache \
   -e HF_TOKEN=\$${HF_TOKEN} \
-  $IMAGE python3 -m vllm.entrypoints.openai.api_server \
-  --model ${model_id} \
-  --max-model-len ${max_model_len} \
-  --block-size 16 \
-  --host 0.0.0.0 --port 8000
+  $IMAGE $CMD_ARGS
 ExecStop=/usr/bin/docker stop emberlane-vllm
 
 [Install]

@@ -55,6 +55,9 @@ def profile_env(models, profile, model_id_override=None):
         "MAX_MODEL_LEN": str(model.get("max_model_len", 4096)),
         "MAX_NUM_SEQS": str(model.get("max_num_seqs", 32)),
         "BLOCK_SIZE": str(model.get("block_size", 8)),
+        "NUM_GPU_BLOCKS_OVERRIDE": str(
+            model.get("num_gpu_blocks_override", model.get("max_num_seqs", 32))
+        ),
         "DEVICE": model.get("device", "neuron"),
         "STATUS": model.get("status", "experimental"),
     }

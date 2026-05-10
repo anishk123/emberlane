@@ -41,14 +41,18 @@ fi
 
 VLLM_PORT="${PORT:-8000}"
 PROXY_PORT="${RUNTIME_PORT:-8080}"
+MODEL_PATH="${MODEL_LOCAL_PATH:-${MODEL_ID}}"
+NUM_GPU_BLOCKS_OVERRIDE="${NUM_GPU_BLOCKS_OVERRIDE:-${MAX_NUM_SEQS}}"
 
 cmd=(
-  vllm serve "${MODEL_ID}"
+  vllm serve "${MODEL_PATH}"
   --device neuron
   --tensor-parallel-size "${TENSOR_PARALLEL_SIZE}"
   --block-size "${BLOCK_SIZE}"
   --max-model-len "${MAX_MODEL_LEN}"
   --max-num-seqs "${MAX_NUM_SEQS}"
+  --num-gpu-blocks-override "${NUM_GPU_BLOCKS_OVERRIDE}"
+  --no-enable-prefix-caching
   --host 0.0.0.0
   --port "${VLLM_PORT}"
 )

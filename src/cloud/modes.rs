@@ -25,8 +25,8 @@ impl FromStr for CostMode {
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value {
-            "economy" => Ok(Self::Economy),
-            "balanced" => Ok(Self::Balanced),
+            "economy" | "spot" => Ok(Self::Economy),
+            "balanced" | "on-demand" | "on_demand" => Ok(Self::Balanced),
             "always-on" | "always_on" => Ok(Self::AlwaysOn),
             other => Err(format!("cost mode '{other}' is not supported")),
         }
@@ -41,7 +41,7 @@ impl CostMode {
                 "enable_warm_pool": false,
                 "enable_idle_scale_down": true,
                 "asg_min_size": 0,
-                "asg_desired_capacity": 0,
+                "asg_desired_capacity": 1,
                 "asg_max_size": 1,
                 "use_spot_instances": true,
                 "desired_capacity_on_wake": 1,
@@ -74,7 +74,7 @@ impl CostMode {
 
     pub fn rows() -> Vec<Value> {
         vec![
-            json!({"mode":"economy","idle_cost_expectation":"lowest","start_expectation":"coldest path","terraform_behavior":"ASG min=0 desired=0 max=1, warm pool disabled, Spot instances, idle scale-down enabled"}),
+            json!({"mode":"economy","idle_cost_expectation":"lowest","start_expectation":"starts ready, then scales down after idle","terraform_behavior":"ASG min=0 desired=1 max=1, warm pool disabled, Spot instances, idle scale-down enabled"}),
             json!({"mode":"balanced","idle_cost_expectation":"some storage/EBS cost while running","start_expectation":"starts ready, then scales down after idle","terraform_behavior":"ASG min=0 desired=1 max=1, warm pool disabled by default, on-demand instances, idle-scale-down enabled"}),
             json!({"mode":"always-on","idle_cost_expectation":"highest","start_expectation":"fastest response, no idle scale-down","terraform_behavior":"ASG min=1 desired=1 max=1, warm pool disabled, on-demand instances, idle scale-down disabled"}),
         ]

@@ -142,7 +142,7 @@ fn terraform_resources_include_required_wakebridge_pieces() {
     assert!(user_data.contains("REASONING_PARSER"));
     assert!(user_data.contains("HF_HOME=/opt/emberlane/model-cache"));
     assert!(user_data.contains("TRANSFORMERS_CACHE=/opt/emberlane/model-cache"));
-    assert!(user_data.contains("--safetensors-load-strategy=prefetch"));
+    assert!(user_data.contains("safetensors prefetch"));
     assert!(user_data.contains("systemctl enable --now emberlane-runtime.service"));
     assert!(user_data.contains("docker run --rm --name emberlane-vllm"));
 }
