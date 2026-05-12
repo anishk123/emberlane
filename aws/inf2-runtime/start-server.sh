@@ -35,8 +35,17 @@ if ! command -v python3 >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! command -v vllm >/dev/null 2>&1; then
-  echo "[emberlane] host vllm not found; falling back to the Neuron Docker image"
+USE_DOCKER_NEURON="${USE_DOCKER_NEURON:-}"
+if [[ -z "${USE_DOCKER_NEURON}" ]]; then
+  if [[ "${VLLM_TARGET_DEVICE}" == "neuron" ]]; then
+    USE_DOCKER_NEURON="true"
+  elif ! command -v vllm >/dev/null 2>&1; then
+    USE_DOCKER_NEURON="true"
+  fi
+fi
+
+if [[ "${USE_DOCKER_NEURON}" == "true" ]]; then
+  echo "[emberlane] using the Neuron Docker image for runtime launch"
 fi
 
 if [[ -n "${S3_NEURON_ARTIFACTS_URI:-}" ]]; then
@@ -65,7 +74,7 @@ echo "Starting ${RUNTIME} profile ${MODEL_PROFILE}: ${MODEL_ID}"
 echo "${cmd[@]}"
 
 start_vllm() {
-  if command -v vllm >/dev/null 2>&1; then
+  if [[ "${USE_DOCKER_NEURON}" != "true" && command -v vllm >/dev/null 2>&1 ]]; then
     "${cmd[@]}" &
     vllm_pid=$!
     return 0
