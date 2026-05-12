@@ -242,14 +242,29 @@ elif [[ "${accelerator}" == "inf2" ]]; then
     
     # Official AWS Neuron vLLM Image
     IMAGE="public.ecr.aws/neuron/pytorch-inference-vllm-neuronx:0.16.0-neuronx-py312-sdk2.29.1-ubuntu24.04"
-    if ! python3 - <<'PY' >/dev/null 2>&1
-import huggingface_hub
+    INF2_VENV="/opt/emberlane/inf2-venv"
+    if [[ ! -x "$${INF2_VENV}/bin/python" ]]; then
+        if ! python3 -m venv "$${INF2_VENV}"; then
+            if command -v apt-get >/dev/null 2>&1; then
+                export DEBIAN_FRONTEND=noninteractive
+                apt-get update -y
+                apt-get install -y python3-venv
+                python3 -m venv "$${INF2_VENV}"
+            else
+                echo "ERROR: python3 -m venv failed and apt-get is unavailable" >&2
+                exit 1
+            fi
+        fi
+    fi
+    INF2_PYTHON="$${INF2_VENV}/bin/python"
+    if ! "$${INF2_PYTHON}" - <<'PY' >/dev/null 2>&1
+import importlib.util
+raise SystemExit(0 if importlib.util.find_spec("huggingface_hub") else 1)
 PY
     then
-        python3 -m pip install --upgrade --break-system-packages pip >/dev/null 2>&1
-        python3 -m pip install --break-system-packages huggingface_hub >/dev/null 2>&1
+        "$${INF2_PYTHON}" -m pip install --quiet --upgrade "huggingface_hub>=0.23.0"
     fi
-    MODEL_LOCAL_PATH="$(python3 - <<'PY'
+    MODEL_LOCAL_PATH="$($${INF2_PYTHON} - <<'PY'
 import os
 from huggingface_hub import snapshot_download
 

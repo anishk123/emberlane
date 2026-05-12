@@ -118,8 +118,10 @@ fn bootstrap_installs_huggingface_hub_and_prefers_neuron_bin_paths() {
     assert!(
         bootstrap.contains("export PATH=\"/opt/aws/neuron/bin:/opt/aws/neuronx/bin:${PATH:-}\"")
     );
-    assert!(bootstrap.contains("Installing huggingface_hub for model download support"));
-    assert!(bootstrap.contains("python3 -m pip install --quiet --upgrade --break-system-packages \"huggingface_hub>=0.23.0\""));
+    assert!(bootstrap.contains("Creating isolated Python virtualenv at ${INF2_VENV}"));
+    assert!(bootstrap.contains("Installing huggingface_hub into ${INF2_VENV}"));
+    assert!(!bootstrap.contains("--break-system-packages"));
+    assert!(bootstrap.contains("export INF2_PYTHON=\"${INF2_VENV}/bin/python\""));
 }
 
 #[test]

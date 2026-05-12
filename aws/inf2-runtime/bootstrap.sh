@@ -21,16 +21,43 @@ else
 fi
 
 ROOT_DIR="${EMBERLANE_INF2_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+INF2_VENV="${INF2_VENV:-/opt/emberlane/inf2-venv}"
 install -m 0644 "${ROOT_DIR}/systemd/emberlane-inf2.service" /etc/systemd/system/emberlane-inf2.service
 
-if ! python3 - <<'PY' >/dev/null 2>&1
+ensure_inf2_python() {
+  if [[ ! -x "${INF2_VENV}/bin/python" ]]; then
+    echo "Creating isolated Python virtualenv at ${INF2_VENV}"
+    if ! python3 -m venv "${INF2_VENV}"; then
+      if command -v apt-get >/dev/null 2>&1; then
+        echo "python3 -m venv is unavailable; installing python3-venv"
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update -y
+        apt-get install -y python3-venv
+        python3 -m venv "${INF2_VENV}"
+      else
+        echo "ERROR: python3 -m venv failed and apt-get is unavailable" >&2
+        exit 1
+      fi
+    fi
+  fi
+
+  if ! "${INF2_VENV}/bin/python" - <<'PY' >/dev/null 2>&1
 import importlib.util
 raise SystemExit(0 if importlib.util.find_spec("huggingface_hub") else 1)
 PY
-then
-  echo "Installing huggingface_hub for model download support"
-  python3 -m pip install --quiet --upgrade --break-system-packages "huggingface_hub>=0.23.0"
+  then
+    echo "Installing huggingface_hub into ${INF2_VENV}"
+    "${INF2_VENV}/bin/python" -m pip install --quiet --upgrade "huggingface_hub>=0.23.0"
+  fi
+}
+
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "ERROR: python3 is required for Inf2 bootstrap" >&2
+  exit 1
 fi
+
+ensure_inf2_python
+export INF2_PYTHON="${INF2_VENV}/bin/python"
 
 if [[ ! -f /etc/emberlane/inf2.env ]]; then
   cat >/etc/emberlane/inf2.env <<'ENV'
