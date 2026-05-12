@@ -382,13 +382,12 @@ note = "Older tiny Qwen fallback only. Keep if newer Qwen3 profiles fail."
 
 [models.qwen35_2b]
 sort_order = 5
-display_name = "Qwen3.5 2B AWQ — 32K Cheapest Simple Agent / Coding on G5"
-model_id = "cyankiwi/Qwen3.5-2B-AWQ-4bit"
+display_name = "Qwen3.5 2B — 32K Simple Agent / Coding on G5"
+model_id = "Qwen/Qwen3.5-2B"
 default_accelerator = "cuda"
 recommended_instance = "g5.2xlarge"
 runtime = "vllm-cuda"
 status = "recommended"
-quantization = "awq"
 max_model_len = 32768
 safe_instance = "g5.4xlarge"
 fallback_instances = ["g5.4xlarge", "g6e.xlarge"]
@@ -406,10 +405,73 @@ require_user_acknowledgement_if_unvalidated = false
 language_model_only = true
 reasoning_parser = "qwen3"
 gpu_memory_utilization = 0.88
-note = "Newest cheap public Qwen3.5 starter. Uses the AWQ 4-bit repo, stays multimodal-capable, and Emberlane serves it text-only to keep memory down."
+note = "Official Qwen3.5 2B base model for the simplest public CUDA lane. Emberlane serves it text-only to keep memory down."
+
+[models.qwen35_2b_awq]
+sort_order = 6
+display_name = "Qwen3.5 2B AWQ — 32K Simple Agent / Coding on G5"
+model_id = "cyankiwi/Qwen3.5-2B-AWQ-4bit"
+default_accelerator = "cuda"
+recommended_instance = "g5.2xlarge"
+runtime = "vllm-cuda"
+status = "advanced"
+quantization = "awq"
+max_model_len = 32768
+safe_instance = "g5.4xlarge"
+fallback_instances = ["g5.4xlarge", "g6e.xlarge"]
+default_mode = "economy"
+default_pricing = "spot"
+balanced_pricing = "on_demand"
+serving_modality = "multimodal"
+use_case = ["single_agent", "simple_coding", "simple_agent", "coding", "general", "multimodal"]
+task_group = "Qwen3.5 — simple coding / simple agent"
+instance_group = "G5 cheapest 32K"
+visibility = "advanced"
+validation_status = "needs_aws_validation"
+validated = false
+require_user_acknowledgement_if_unvalidated = false
+language_model_only = true
+reasoning_parser = "qwen3"
+gpu_memory_utilization = 0.88
+note = "AWQ 4-bit version of the cheap Qwen3.5 2B lane. Useful when you want more memory headroom."
 
 [models.qwen35_9b]
-sort_order = 6
+sort_order = 7
+display_name = "Qwen3.5 9B — 32K Hard Coding / Deep Research on G6e"
+model_id = "Qwen/Qwen3.5-9B"
+default_accelerator = "cuda"
+recommended_instance = "g6e.2xlarge"
+runtime = "vllm-cuda"
+status = "advanced"
+language_model_only = true
+reasoning_parser = "qwen3"
+fallback_instances = ["g6e.4xlarge"]
+max_model_len = 32768
+safe_instance = "g6e.4xlarge"
+default_mode = "economy"
+default_pricing = "spot"
+balanced_pricing = "on_demand"
+serving_modality = "multimodal"
+use_case = [
+  "hard_coding",
+  "hard_agent",
+  "reasoning",
+  "deep_research",
+  "research",
+  "coding",
+  "multimodal",
+]
+task_group = "Qwen3.5 — hard coding / deep research"
+instance_group = "G6e stronger 32K"
+visibility = "advanced"
+validation_status = "needs_aws_validation"
+validated = false
+require_user_acknowledgement_if_unvalidated = false
+gpu_memory_utilization = 0.90
+note = "Official Qwen3.5 9B base model for the stronger public CUDA lane. Emberlane serves it text-only so the runtime stays practical."
+
+[models.qwen35_9b_awq]
+sort_order = 8
 display_name = "Qwen3.5 9B AWQ — 32K Hard Coding / Deep Research on G6e"
 model_id = "QuantTrio/Qwen3.5-9B-AWQ"
 default_accelerator = "cuda"
@@ -442,10 +504,10 @@ validation_status = "needs_aws_validation"
 validated = false
 require_user_acknowledgement_if_unvalidated = false
 gpu_memory_utilization = 0.90
-note = "Uses the AWQ repo. Multimodal-capable, but Emberlane serves it text-only so the runtime stays practical."
+note = "AWQ version of the stronger Qwen3.5 9B lane. Useful when you want more efficiency or safety margin."
 
 [models.qwen35_9b_quantized]
-sort_order = 7
+sort_order = 9
 display_name = "Qwen3.5 9B Quantized — Hidden Tiny-Context Experiment"
 model_id = "inference-optimization/Qwen3.5-9B-quantized.w4a16"
 default_accelerator = "cuda"

@@ -44,8 +44,41 @@ Emberlane is designed to be useful by default and adjustable when you need it.
 
 Recommended AWS first path:
 
+- runtime: `vLLM CUDA`
+- model: `qwen35_2b`
+- repo: `Qwen/Qwen3.5-2B`
+- instance: `g5.2xlarge`
+- task: `Single agent / simple coding`
+- mode: `economy` on Spot, or `balanced` when you want ready-first behavior
+
+If you want extra memory headroom on the same lane:
+
+- model: `qwen35_2b_awq`
+- repo: `cyankiwi/Qwen3.5-2B-AWQ-4bit`
+- instance: `g5.2xlarge`
+- task: `Single agent / simple coding`
+
+If you want a stronger Qwen3.5 step-up:
+
+- runtime: `vLLM CUDA`
+- model: `qwen35_9b`
+- repo: `Qwen/Qwen3.5-9B`
+- instance: `g6e.2xlarge`
+- task: `Hard coding / deep research / reasoning`
+- mode: `balanced` when you want ready-first behavior
+
+If you want the AWQ variant of the stronger lane:
+
+- model: `qwen35_9b_awq`
+- repo: `QuantTrio/Qwen3.5-9B-AWQ`
+- instance: `g6e.2xlarge`
+- task: `Hard coding / deep research / reasoning`
+
+If you want the cheaper Inf2 lane:
+
 - runtime: `vLLM Neuron`
 - model: `qwen3_4b_inf2_4k`
+- repo: `Qwen/Qwen3-4B`
 - instance: `inf2.xlarge`
 - task: `Simple coding`
 - mode: `economy` on Spot, or `balanced` when you want ready-first behavior
@@ -54,18 +87,11 @@ If you want more room on Inf2:
 
 - runtime: `vLLM Neuron`
 - model: `qwen3_8b_inf2_32k`
+- repo: `Qwen/Qwen3-8B`
 - instance: `inf2.8xlarge`
 - safe fallback: `inf2.24xlarge`
 - task: `Deep research`
 - mode: `balanced` when you want ready-first behavior
-
-If you want the NVIDIA path instead:
-
-- runtime: `vLLM CUDA`
-- model: `qwen3_8b_awq_32k_g5`
-- instance: `g5.2xlarge`
-- task: `Simple coding`
-- mode: `economy` on Spot, or `balanced` when you want ready-first behavior
 
 When you run `aws deploy` interactively, Emberlane now asks for the model on the instance first, then asks for cost mode next. The cost-mode prompt defaults to `economy / Spot`.
 
@@ -109,7 +135,7 @@ cargo run -- aws modes
 cargo run -- aws prices show
 cargo run -- aws print-config
 cargo run -- aws deploy --profile your-profile --mode balanced
-cargo run -- aws validate-profile qwen3_4b_inf2_4k --aws-profile your-profile --auto-approve
+cargo run -- aws validate-profile qwen35_2b --aws-profile your-profile --auto-approve
 cargo run -- aws chat "Explain scale-to-zero inference" --profile your-profile
 cargo run -- aws benchmark --profile your-profile
 cargo run -- aws cost-report --profile your-profile
@@ -183,11 +209,11 @@ Use `cargo run -- aws models` to list the available model profiles.
 
 Each profile describes one model and the hardware Emberlane recommends for it.
 
-The public AWS runtimes are `vLLM Neuron` for the default Inf2 path and `vLLM CUDA` for NVIDIA fallback paths.
+The public AWS runtimes are `vLLM CUDA` for the default public path and `vLLM Neuron` for Inf2 paths.
 
-The default AWS path is `qwen3_4b_inf2_4k` (model id `Qwen/Qwen3-4B`) on `inf2.xlarge` in `economy` mode. That is the recommended first path for public release.
+The default AWS path is `qwen35_2b` on `g5.2xlarge` in `economy` mode. That is the recommended first path for public release.
 
-That default is tuned for text-only serving: Emberlane passes the profile-specific max context length and Neuron launch flags so the single-GPU Inf2 path stays practical.
+That default uses the official base Qwen3.5 2B repo and text-only serving so the single-GPU CUDA path stays practical. If you want the AWQ sibling for more headroom, choose `qwen35_2b_awq`.
 
 `economy` is Spot + ready-first, `balanced` is On-Demand + ready-first, and `always-on` is On-Demand + never sleeps.
 
@@ -195,15 +221,17 @@ Model selection guide:
 
 | Profile | Best for | Kind | Notes |
 | --- | --- | --- | --- |
-| `qwen35_2b` | single agent, simple coding | multimodal/text | `cyankiwi/Qwen3.5-2B-AWQ-4bit` on `g5.2xlarge`; Emberlane serves text-only |
-| `qwen35_9b` | hard coding, deep research, reasoning | multimodal/text | `QuantTrio/Qwen3.5-9B-AWQ` on `g6e.2xlarge`; Emberlane serves text-only |
-| `qwen3_4b_inf2_4k` | simple coding | text | cheapest public Inf2 starter |
-| `qwen3_8b_inf2_32k` | Inf2 32K validation, deep research | text | cheaper Inf2 8B lane on `inf2.8xlarge`; safe fallback is `inf2.24xlarge` |
-| `qwen3_8b_awq_32k_g5` | simple coding | text | budget CUDA path |
-| `qwen3_8b_awq_32k` | simple agent | text | larger CUDA path |
-| `qwen3_8b_awq_128k` | deep research | text | deepest CUDA context option |
-| `gemma3_12b_128k` | multimodal | multimodal | use this when you want vision input |
-| `deepseek_r1_distill_qwen14b_64k` | hard agent | text | slower, more deliberate |
+| `qwen35_2b` | single agent, simple coding | 32K | multimodal/text | `Qwen/Qwen3.5-2B` on `g5.2xlarge`; Emberlane serves text-only |
+| `qwen35_2b_awq` | single agent, simple coding | 32K | multimodal/text | `cyankiwi/Qwen3.5-2B-AWQ-4bit` on `g5.2xlarge`; Emberlane serves text-only |
+| `qwen35_9b` | hard coding, hard agent, reasoning, deep research | 32K | multimodal/text | `Qwen/Qwen3.5-9B` on `g6e.2xlarge`; Emberlane serves text-only |
+| `qwen35_9b_awq` | hard coding, hard agent, reasoning, deep research | 32K | multimodal/text | `QuantTrio/Qwen3.5-9B-AWQ` on `g6e.2xlarge`; Emberlane serves text-only |
+| `qwen3_4b_inf2_4k` | simple coding, simple agent | 4K | text | cheapest public Inf2 starter |
+| `qwen3_8b_inf2_32k` | deep research, large context | 32K | text | cheaper Inf2 lane on `inf2.8xlarge`; safe fallback is `inf2.24xlarge` |
+| `qwen3_8b_awq_32k_g5` | simple coding | 32K | text | budget CUDA path |
+| `qwen3_8b_awq_32k` | simple agent, coding, research | 32K | text | larger CUDA path |
+| `qwen3_8b_awq_128k` | deep research, complex agent | 128K | text | deepest CUDA context option |
+| `gemma3_12b_128k` | research, multimodal | 128K | multimodal | use this when you want vision input |
+| `deepseek_r1_distill_qwen14b_64k` | reasoning, hard agent | 64K | text | slower, more deliberate |
 
 Legacy Qwen2.5 Inf2 compatibility profiles remain hidden unless you pass `--experimental` or `--show-hidden`.
 

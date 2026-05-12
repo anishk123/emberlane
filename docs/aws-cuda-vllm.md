@@ -6,8 +6,10 @@ The public NVIDIA path is `vLLM CUDA`.
 
 Use the CUDA path when you want NVIDIA headroom or to compare against the Inf2 defaults:
 
-- `qwen35_2b` on `g5.2xlarge` for the cheapest new-model simple agent / simple coding lane, using `cyankiwi/Qwen3.5-2B-AWQ-4bit`
-- `qwen35_9b` on `g6e.2xlarge` for hard coding / deep research / reasoning, using `QuantTrio/Qwen3.5-9B-AWQ`
+- `qwen35_2b` on `g5.2xlarge` for the official Qwen3.5 2B base lane
+- `qwen35_2b_awq` on `g5.2xlarge` for the AWQ version when you want extra memory headroom
+- `qwen35_9b` on `g6e.2xlarge` for the official Qwen3.5 9B base lane
+- `qwen35_9b_awq` on `g6e.2xlarge` for the AWQ version when you want extra memory headroom
 - `qwen3_8b_awq_32k_g5` on `g5.2xlarge` for simple coding if you want a text-only AWQ path
 - `qwen3_8b_awq_32k` on `g6e.xlarge` for simple agents
 - `qwen3_8b_awq_128k` on `g6e.2xlarge` for deep research
@@ -32,6 +34,6 @@ The dev bootstrap path starts `vllm/vllm-openai:latest` through Docker when Dock
 
 Emberlane keeps the Hugging Face cache on the instance disk, forces vLLM safetensors prefetch, and uses conservative context caps on the public CUDA profiles so the default path stays practical on the single-GPU `g5.2xlarge` and the smaller G6e lanes.
 
-If you want more context headroom, try the `qwen3_8b_awq_128k` profile. It points at the same model family with rope scaling and stays in the public menu for deeper research. If you want the newer Qwen family instead, start with `qwen35_2b` and step up to `qwen35_9b`.
+If you want more context headroom, try the `qwen3_8b_awq_128k` profile. It points at the same model family with rope scaling and stays in the public menu for deeper research. If you want the newer Qwen family instead, start with `qwen35_2b` and step up to `qwen35_9b`; choose the AWQ siblings when you want extra memory headroom on the same instance class.
 
 No fixed latency or savings claims are made. Benchmark your model, AMI, region, and prompt mix.

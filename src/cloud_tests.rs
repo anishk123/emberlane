@@ -41,8 +41,8 @@ fn model_profiles_parse_and_include_new_public_profiles() {
     assert_eq!(qwen35_2b.default_accelerator, "cuda");
     assert_eq!(qwen35_2b.recommended_instance, "g5.2xlarge");
     assert_eq!(qwen35_2b.status, "recommended");
-    assert_eq!(qwen35_2b.model_id, "cyankiwi/Qwen3.5-2B-AWQ-4bit");
-    assert_eq!(qwen35_2b.quantization.as_deref(), Some("awq"));
+    assert_eq!(qwen35_2b.model_id, "Qwen/Qwen3.5-2B");
+    assert_eq!(qwen35_2b.quantization.as_deref(), None);
     assert_eq!(qwen35_2b.default_mode.as_deref(), Some("economy"));
     assert_eq!(qwen35_2b.default_pricing.as_deref(), Some("spot"));
     assert_eq!(qwen35_2b.balanced_pricing.as_deref(), Some("on_demand"));
@@ -58,12 +58,36 @@ fn model_profiles_parse_and_include_new_public_profiles() {
     assert_eq!(qwen35_2b.max_model_len, 32768);
     assert!(qwen35_2b.use_case.contains(&"single_agent".to_string()));
 
+    let qwen35_2b_awq = profiles.get("qwen35_2b_awq").unwrap();
+    assert_eq!(qwen35_2b_awq.default_accelerator, "cuda");
+    assert_eq!(qwen35_2b_awq.recommended_instance, "g5.2xlarge");
+    assert_eq!(qwen35_2b_awq.status, "advanced");
+    assert_eq!(qwen35_2b_awq.model_id, "cyankiwi/Qwen3.5-2B-AWQ-4bit");
+    assert_eq!(qwen35_2b_awq.quantization.as_deref(), Some("awq"));
+    assert_eq!(qwen35_2b_awq.default_mode.as_deref(), Some("economy"));
+    assert_eq!(qwen35_2b_awq.default_pricing.as_deref(), Some("spot"));
+    assert_eq!(qwen35_2b_awq.balanced_pricing.as_deref(), Some("on_demand"));
+    assert_eq!(qwen35_2b_awq.visibility.as_deref(), Some("advanced"));
+    assert_eq!(
+        qwen35_2b_awq.validation_status.as_deref(),
+        Some("needs_aws_validation")
+    );
+    assert!(!qwen35_2b_awq.require_user_acknowledgement_if_unvalidated);
+    assert!(qwen35_2b_awq.language_model_only);
+    assert_eq!(qwen35_2b_awq.reasoning_parser.as_deref(), Some("qwen3"));
+    assert_eq!(
+        qwen35_2b_awq.serving_modality.as_deref(),
+        Some("multimodal")
+    );
+    assert_eq!(qwen35_2b_awq.max_model_len, 32768);
+    assert!(qwen35_2b_awq.use_case.contains(&"multimodal".to_string()));
+
     let qwen35_9b = profiles.get("qwen35_9b").unwrap();
     assert_eq!(qwen35_9b.default_accelerator, "cuda");
     assert_eq!(qwen35_9b.recommended_instance, "g6e.2xlarge");
     assert_eq!(qwen35_9b.status, "advanced");
-    assert_eq!(qwen35_9b.model_id, "QuantTrio/Qwen3.5-9B-AWQ");
-    assert_eq!(qwen35_9b.quantization.as_deref(), Some("awq"));
+    assert_eq!(qwen35_9b.model_id, "Qwen/Qwen3.5-9B");
+    assert_eq!(qwen35_9b.quantization.as_deref(), None);
     assert_eq!(qwen35_9b.default_mode.as_deref(), Some("economy"));
     assert_eq!(qwen35_9b.default_pricing.as_deref(), Some("spot"));
     assert_eq!(qwen35_9b.balanced_pricing.as_deref(), Some("on_demand"));
@@ -78,6 +102,30 @@ fn model_profiles_parse_and_include_new_public_profiles() {
     assert_eq!(qwen35_9b.serving_modality.as_deref(), Some("multimodal"));
     assert_eq!(qwen35_9b.max_model_len, 32768);
     assert_eq!(qwen35_9b.safe_instance.as_deref(), Some("g6e.4xlarge"));
+
+    let qwen35_9b_awq = profiles.get("qwen35_9b_awq").unwrap();
+    assert_eq!(qwen35_9b_awq.default_accelerator, "cuda");
+    assert_eq!(qwen35_9b_awq.recommended_instance, "g6e.2xlarge");
+    assert_eq!(qwen35_9b_awq.status, "advanced");
+    assert_eq!(qwen35_9b_awq.model_id, "QuantTrio/Qwen3.5-9B-AWQ");
+    assert_eq!(qwen35_9b_awq.quantization.as_deref(), Some("awq"));
+    assert_eq!(qwen35_9b_awq.default_mode.as_deref(), Some("economy"));
+    assert_eq!(qwen35_9b_awq.default_pricing.as_deref(), Some("spot"));
+    assert_eq!(qwen35_9b_awq.balanced_pricing.as_deref(), Some("on_demand"));
+    assert_eq!(qwen35_9b_awq.visibility.as_deref(), Some("advanced"));
+    assert_eq!(
+        qwen35_9b_awq.validation_status.as_deref(),
+        Some("needs_aws_validation")
+    );
+    assert!(!qwen35_9b_awq.require_user_acknowledgement_if_unvalidated);
+    assert!(qwen35_9b_awq.language_model_only);
+    assert_eq!(qwen35_9b_awq.reasoning_parser.as_deref(), Some("qwen3"));
+    assert_eq!(
+        qwen35_9b_awq.serving_modality.as_deref(),
+        Some("multimodal")
+    );
+    assert_eq!(qwen35_9b_awq.max_model_len, 32768);
+    assert_eq!(qwen35_9b_awq.safe_instance.as_deref(), Some("g6e.4xlarge"));
 
     let qwen = profiles.get("qwen3_8b_awq_32k_g5").unwrap();
     assert_eq!(qwen.default_accelerator, "cuda");
@@ -248,6 +296,8 @@ fn hidden_profiles_do_not_show_in_public_rows() {
     let rows = profiles::rows().unwrap();
     assert!(rows.iter().any(|row| row["profile"] == "qwen35_2b"));
     assert!(rows.iter().any(|row| row["profile"] == "qwen35_9b"));
+    assert!(rows.iter().any(|row| row["profile"] == "qwen35_2b_awq"));
+    assert!(rows.iter().any(|row| row["profile"] == "qwen35_9b_awq"));
     assert!(rows
         .iter()
         .all(|row| row["profile"] != "qwen35_9b_quantized"));
@@ -294,6 +344,14 @@ fn public_model_menu_prioritizes_recommended_and_shows_instances_clearly() {
         sections
             .first()
             .and_then(|section| section["profiles"].as_array())
+            .and_then(|profiles| profiles.get(1))
+            .and_then(|profile| profile["profile"].as_str()),
+        Some("qwen35_2b_awq")
+    );
+    assert_eq!(
+        sections
+            .first()
+            .and_then(|section| section["profiles"].as_array())
             .and_then(|profiles| profiles.first())
             .and_then(|profile| profile["validation_status"].as_str()),
         Some("ready")
@@ -310,10 +368,15 @@ fn public_model_menu_prioritizes_recommended_and_shows_instances_clearly() {
     assert!(label.contains("multimodal"));
     assert!(label.contains("text"));
     assert!(label.contains("g5.2xlarge"));
-    assert!(label.contains("awq"));
+    assert!(!label.contains("awq"));
     assert_eq!(label.matches("multimodal").count(), 1);
     assert!(!label.contains("spot"));
     assert!(!label.contains("on_demand"));
+
+    let qwen35_2b_awq_label =
+        profiles::deploy_prompt_label("qwen35_2b_awq", profiles.get("qwen35_2b_awq").unwrap());
+    assert!(qwen35_2b_awq_label.contains("awq"));
+    assert!(qwen35_2b_awq_label.contains("g5.2xlarge"));
 
     let gemma_label =
         profiles::deploy_prompt_label("gemma3_12b_128k", profiles.get("gemma3_12b_128k").unwrap());
@@ -330,9 +393,13 @@ fn public_model_menu_prioritizes_recommended_and_shows_instances_clearly() {
     assert!(qwen35_9b_label.contains("research"));
     assert!(qwen35_9b_label.contains("multimodal"));
     assert!(qwen35_9b_label.contains("text"));
-    assert!(qwen35_9b_label.contains("awq"));
     assert!(qwen35_9b_label.contains("g6e.2xlarge"));
     assert_eq!(qwen35_9b_label.matches("multimodal").count(), 1);
+
+    let qwen35_9b_awq_label =
+        profiles::deploy_prompt_label("qwen35_9b_awq", profiles.get("qwen35_9b_awq").unwrap());
+    assert!(qwen35_9b_awq_label.contains("awq"));
+    assert!(qwen35_9b_awq_label.contains("g6e.2xlarge"));
 
     let inf2_label = profiles::deploy_prompt_label(
         "qwen3_8b_inf2_32k",

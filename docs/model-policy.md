@@ -7,7 +7,9 @@ Emberlane is opinionated on purpose. The public default should be easy to unders
 | Profile | Best for | Kind |
 | --- | --- | --- |
 | `qwen35_2b` | single agent, simple coding | multimodal/text |
+| `qwen35_2b_awq` | single agent, simple coding | multimodal/text |
 | `qwen35_9b` | hard coding, hard agent, reasoning, deep research | multimodal/text |
+| `qwen35_9b_awq` | hard coding, hard agent, reasoning, deep research | multimodal/text |
 | `qwen3_4b_inf2_4k` | simple coding, simple agents | text |
 | `qwen3_8b_awq_32k_g5` | simple coding | text |
 | `qwen3_8b_awq_32k` | simple agents | text |
@@ -18,23 +20,23 @@ Emberlane is opinionated on purpose. The public default should be easy to unders
 
 ## Why Qwen3.5 Is The First Public CUDA Path
 
-Qwen3.5 is the newest public Qwen family Emberlane exposes. The public CUDA profiles use the AWQ community repos `cyankiwi/Qwen3.5-2B-AWQ-4bit` and `QuantTrio/Qwen3.5-9B-AWQ`, which keep the newest Qwen behavior available in a practical single-GPU shape.
+Qwen3.5 is the newest public Qwen family Emberlane exposes. The public CUDA profiles keep both the official base repos and the AWQ community repos available: `Qwen/Qwen3.5-2B`, `cyankiwi/Qwen3.5-2B-AWQ-4bit`, `Qwen/Qwen3.5-9B`, and `QuantTrio/Qwen3.5-9B-AWQ`. That lets the user choose between the clean official path and the lower-memory AWQ variant.
 
 That makes Qwen3.5 on CUDA a real, documented path, not a guess.
 
 ## Why The Menu Keeps Cheapest First
 
-The public menu is sorted by a cheapest-first rule inside each family. For Qwen3.5 that means `qwen35_2b` appears before `qwen35_9b`. For Qwen3, the Inf2 and CUDA starters stay around as lower-risk follow-ups.
+The public menu is sorted by a cheapest-first rule inside each family. For Qwen3.5 that means `qwen35_2b` appears before `qwen35_2b_awq`, and `qwen35_9b` appears before `qwen35_9b_awq`. For Qwen3, the Inf2 and CUDA starters stay around as lower-risk follow-ups.
 
 `g5.2xlarge` is the cheapest public place to try Qwen3.5-2B, while `g6e.2xlarge` is the cleaner place to try Qwen3.5-9B. If Qwen3.5-9B needs more room, `g6e.4xlarge` is the next safe step-up.
 
 ## Why Qwen3.5-2B Is The First Newer Starter
 
-`Qwen/Qwen3.5-2B` remains the base model family behind the cheapest public CUDA lane, but Emberlane serves the AWQ repo `cyankiwi/Qwen3.5-2B-AWQ-4bit` to keep the `g5.2xlarge` path practical. It is still the obvious stepping stone before users move up to the larger 9B profile.
+`Qwen/Qwen3.5-2B` remains the base model family behind the cheapest public CUDA lane, and Emberlane also exposes the AWQ repo `cyankiwi/Qwen3.5-2B-AWQ-4bit` when you want more memory headroom on the same `g5.2xlarge` class.
 
 ## Why Qwen3.5-9B Exists
 
-`Qwen/Qwen3.5-9B` is the newer model for hard coding, hard agent, reasoning, and deep research tasks. Emberlane serves the AWQ repo `QuantTrio/Qwen3.5-9B-AWQ` text-only so the runtime stays practical, but the underlying model is still multimodal-capable.
+`Qwen/Qwen3.5-9B` is the newer model for hard coding, hard agent, reasoning, and deep research tasks. Emberlane also exposes the AWQ repo `QuantTrio/Qwen3.5-9B-AWQ` text-only so the runtime stays practical, but the underlying model is still multimodal-capable.
 
 ## Why 32K Still Matters
 
