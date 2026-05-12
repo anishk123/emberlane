@@ -171,6 +171,9 @@ import shlex
 import sys
 
 os.environ["VLLM_TARGET_DEVICE"] = "neuron"
+flags = os.environ.get("NEURON_CC_FLAGS", "")
+if "--retry_failed_compilation" not in flags.split():
+    os.environ["NEURON_CC_FLAGS"] = (flags + " --retry_failed_compilation").strip()
 
 with open("/etc/emberlane/vllm-command", "r", encoding="utf-8") as fh:
     raw_command = fh.read().strip()

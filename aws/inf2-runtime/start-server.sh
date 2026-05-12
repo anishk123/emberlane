@@ -11,6 +11,10 @@ export TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE:-${HF_HOME}}"
 export NEURON_COMPILED_ARTIFACTS="${NEURON_COMPILED_ARTIFACTS:-/opt/emberlane/neuron-cache}"
 export VLLM_TARGET_DEVICE="${VLLM_TARGET_DEVICE:-neuron}"
 export NEURON_CC_FLAGS="${NEURON_CC_FLAGS:-}"
+case " ${NEURON_CC_FLAGS} " in
+  *" --retry_failed_compilation "*) ;;
+  *) export NEURON_CC_FLAGS="${NEURON_CC_FLAGS} --retry_failed_compilation" ;;
+esac
 export NEURON_CONTEXT_LENGTH_BUCKETS="${NEURON_CONTEXT_LENGTH_BUCKETS:-}"
 export NEURON_TOKEN_GEN_BUCKETS="${NEURON_TOKEN_GEN_BUCKETS:-}"
 export VLLM_USE_V1="${VLLM_USE_V1:-0}"
