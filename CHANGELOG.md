@@ -5,7 +5,7 @@ All notable changes to Emberlane will be documented here.
 ## Unreleased
 
 - Prepared the repository for a public alpha release.
-- Added dual licensing under MIT OR Apache-2.0.
+- Simplified licensing to MIT only.
 - Hardened CI, contribution, security, issue, PR, and release-readiness documentation.
 
 ## v0.1.0-alpha

@@ -5,7 +5,7 @@ AWS scale-to-zero LLM inference, with Ollama for development.
 Run a single binary. Deploy model profiles to AWS when you want the cloud to wake up only on demand, or use Ollama locally when you are iterating.
 
 [![CI](https://github.com/anishk123/emberlane/actions/workflows/ci.yml/badge.svg)](https://github.com/anishk123/emberlane/actions)
-![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)
+![License](https://img.shields.io/badge/license-MIT-blue)
 ![Rust](https://img.shields.io/badge/rust-1.75%2B-orange)
 ![Terraform](https://img.shields.io/badge/terraform-validated-623CE4)
 ![AWS](https://img.shields.io/badge/AWS-supported-FF9900)
@@ -323,4 +323,4 @@ AWS is the first implemented hyperscaler backend. GCP and Azure are planned for 
 
 ## License
 
-Emberlane is dual-licensed under MIT OR Apache-2.0.
+Emberlane is licensed under MIT.
