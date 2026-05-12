@@ -239,8 +239,6 @@ fn model_profiles_parse_and_include_new_public_profiles() {
     assert_eq!(
         qwen25_coder_inf2.vllm_extra_args,
         vec![
-            "--device".to_string(),
-            "neuron".to_string(),
             "--tensor-parallel-size".to_string(),
             "2".to_string(),
             "--max-num-seqs".to_string(),
@@ -619,7 +617,7 @@ async fn aws_backend_renders_cuda_and_rope_scaling_tfvars() {
     );
     let command = vars["vllm_command"].as_str().unwrap();
     assert!(command.starts_with("serve Qwen/Qwen3-4B "));
-    assert!(command.contains("--device neuron"));
+    assert!(!command.contains("--device neuron"));
 }
 
 #[tokio::test]

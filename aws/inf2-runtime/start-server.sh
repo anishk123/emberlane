@@ -9,6 +9,7 @@ eval "$("${ROOT_DIR}/scripts/render-env.py" --profile "${MODEL_PROFILE}")"
 export HF_HOME="${HF_HOME:-/opt/emberlane/model-cache}"
 export TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE:-${HF_HOME}}"
 export NEURON_COMPILED_ARTIFACTS="${NEURON_COMPILED_ARTIFACTS:-/opt/emberlane/neuron-cache}"
+export VLLM_TARGET_DEVICE="${VLLM_TARGET_DEVICE:-neuron}"
 export NEURON_CC_FLAGS="${NEURON_CC_FLAGS:-}"
 export NEURON_CONTEXT_LENGTH_BUCKETS="${NEURON_CONTEXT_LENGTH_BUCKETS:-}"
 export NEURON_TOKEN_GEN_BUCKETS="${NEURON_TOKEN_GEN_BUCKETS:-}"
@@ -46,7 +47,6 @@ NUM_GPU_BLOCKS_OVERRIDE="${NUM_GPU_BLOCKS_OVERRIDE:-${MAX_NUM_SEQS}}"
 VLLM_IMAGE="${VLLM_IMAGE:-public.ecr.aws/neuron/pytorch-inference-vllm-neuronx:0.16.0-neuronx-py312-sdk2.29.1-ubuntu24.04}"
 
 vllm_args=(serve "${MODEL_PATH}"
-  --device neuron
   --tensor-parallel-size "${TENSOR_PARALLEL_SIZE}"
   --block-size "${BLOCK_SIZE}"
   --max-model-len "${MAX_MODEL_LEN}"
@@ -89,6 +89,7 @@ start_vllm() {
     -v "${HF_HOME}:${HF_HOME}" \
     -v "${NEURON_COMPILED_ARTIFACTS}:${NEURON_COMPILED_ARTIFACTS}" \
     -e "VLLM_USE_V1=${VLLM_USE_V1}" \
+    -e "VLLM_TARGET_DEVICE=${VLLM_TARGET_DEVICE}" \
     -e "VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND}" \
     -e "HF_HOME=${HF_HOME}" \
     -e "TRANSFORMERS_CACHE=${TRANSFORMERS_CACHE}" \

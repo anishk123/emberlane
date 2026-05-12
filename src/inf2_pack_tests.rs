@@ -130,7 +130,6 @@ fn start_server_contains_required_vllm_neuron_flags() {
     for needle in [
         "vllm_args=(serve",
         "cmd=(vllm \"${vllm_args[@]}\")",
-        "--device neuron",
         "--tensor-parallel-size",
         "--block-size",
         "--max-model-len",
@@ -143,6 +142,7 @@ fn start_server_contains_required_vllm_neuron_flags() {
         "SYNC_ARTIFACTS_BACK",
         "host vllm not found; falling back to the Neuron Docker image",
         "docker run --rm --name emberlane-vllm --entrypoint vllm",
+        "VLLM_TARGET_DEVICE",
         "VLLM_USE_V1",
         "VLLM_ATTENTION_BACKEND",
     ] {

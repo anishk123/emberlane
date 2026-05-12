@@ -170,6 +170,8 @@ import os
 import shlex
 import sys
 
+os.environ["VLLM_TARGET_DEVICE"] = "neuron"
+
 with open("/etc/emberlane/vllm-command", "r", encoding="utf-8") as fh:
     raw_command = fh.read().strip()
 
@@ -320,6 +322,8 @@ cmd.extend([
     "--shm-size=2g",
     "-e",
     "VLLM_USE_V1=0",
+    "-e",
+    "VLLM_TARGET_DEVICE=neuron",
     "-e",
     "VLLM_ATTENTION_BACKEND=NEURON",
     "-p",

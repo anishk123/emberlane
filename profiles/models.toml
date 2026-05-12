@@ -36,7 +36,6 @@ validated = false
 require_user_acknowledgement_if_unvalidated = false
 note = "Cheapest new-model profile to try first for simple agents. Context is too small for serious coding or research."
 vllm_extra_args = [
-  "--device", "neuron",
   "--tensor-parallel-size", "2",
   "--max-num-seqs", "4",
   "--block-size", "32",
@@ -157,7 +156,6 @@ validated = false
 require_user_acknowledgement_if_unvalidated = false
 note = "Strategic Inf2 target. inf2.8xlarge has the same 32GB accelerator memory as inf2.xlarge, but more host CPU/RAM for compile/runtime comfort; use inf2.24xlarge if this 32K test fails."
 vllm_extra_args = [
-  "--device", "neuron",
   "--tensor-parallel-size", "2",
   "--max-num-seqs", "1",
   "--block-size", "32",
@@ -282,7 +280,6 @@ validated = true
 require_user_acknowledgement_if_unvalidated = false
 note = "Safe older Inf2 fallback for smoke tests. Not useful as the main coding/research model."
 vllm_extra_args = [
-  "--device", "neuron",
   "--tensor-parallel-size", "2",
   "--max-num-seqs", "4",
   "--block-size", "32",
@@ -315,7 +312,6 @@ validated = true
 require_user_acknowledgement_if_unvalidated = false
 note = "Older coding-specific fallback. Use only if newer profiles fail. Context is too small for real repo coding."
 vllm_extra_args = [
-  "--device", "neuron",
   "--tensor-parallel-size", "2",
   "--max-num-seqs", "4",
   "--block-size", "32",
@@ -350,7 +346,6 @@ validated = true
 require_user_acknowledgement_if_unvalidated = false
 note = "Older larger Inf2 fallback. More expensive but still only 4K context."
 vllm_extra_args = [
-  "--device", "neuron",
   "--tensor-parallel-size", "2",
   "--max-num-seqs", "2",
   "--block-size", "32",
