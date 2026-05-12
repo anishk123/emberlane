@@ -9,7 +9,7 @@ Run a single binary. Deploy model profiles to AWS when you want the cloud to wak
 ![Rust](https://img.shields.io/badge/rust-1.75%2B-orange)
 ![Terraform](https://img.shields.io/badge/terraform-validated-623CE4)
 ![AWS](https://img.shields.io/badge/AWS-supported-FF9900)
-![Inferentia2](https://img.shields.io/badge/Inf2-experimental-blueviolet)
+![Inferentia2](https://img.shields.io/badge/Inf2-supported-blueviolet)
 
 ## At A Glance
 
@@ -44,17 +44,28 @@ Emberlane is designed to be useful by default and adjustable when you need it.
 
 Recommended AWS first path:
 
+- runtime: `vLLM Neuron`
+- model: `qwen3_4b_inf2_4k`
+- instance: `inf2.xlarge`
+- task: `Simple coding`
+- mode: `economy` on Spot, or `balanced` when you want ready-first behavior
+
+If you want more room on Inf2:
+
+- runtime: `vLLM Neuron`
+- model: `qwen3_8b_inf2_32k`
+- instance: `inf2.8xlarge`
+- safe fallback: `inf2.24xlarge`
+- task: `Deep research`
+- mode: `balanced` when you want ready-first behavior
+
+If you want the NVIDIA path instead:
+
 - runtime: `vLLM CUDA`
 - model: `qwen3_8b_awq_32k_g5`
 - instance: `g5.2xlarge`
+- task: `Simple coding`
 - mode: `economy` on Spot, or `balanced` when you want ready-first behavior
-
-Optional lower-cost Inf2 experiment:
-
-- runtime: `vLLM Neuron`
-- model: `qwen3_8b_inf2_4k`
-- instance: `inf2.xlarge`
-- mode: `economy` on Spot
 
 When you run `aws deploy` interactively, Emberlane now asks for the model on the instance first, then asks for cost mode next. The cost-mode prompt defaults to `economy / Spot`.
 
@@ -98,7 +109,7 @@ cargo run -- aws modes
 cargo run -- aws prices show
 cargo run -- aws print-config
 cargo run -- aws deploy --profile your-profile --mode balanced
-cargo run -- aws validate-profile qwen3_8b_awq_32k_g5 --aws-profile your-profile --auto-approve
+cargo run -- aws validate-profile qwen3_4b_inf2_4k --aws-profile your-profile --auto-approve
 cargo run -- aws chat "Explain scale-to-zero inference" --profile your-profile
 cargo run -- aws benchmark --profile your-profile
 cargo run -- aws cost-report --profile your-profile
@@ -128,8 +139,8 @@ Emberlane is designed so you can keep the defaults simple and still compare seve
 Example:
 
 ```sh
-cargo run -- aws deploy --profile your-profile --model qwen3_8b_awq_32k_g5 --mode balanced
-cargo run -- aws deploy --profile your-profile --model deepseek_r1_distill_qwen14b_64k --mode economy --experimental --acknowledge-unvalidated
+cargo run -- aws deploy --profile your-profile --model qwen3_4b_inf2_4k --mode balanced
+cargo run -- aws deploy --profile your-profile --model deepseek_r1_distill_qwen14b_64k --mode economy
 cargo run -- aws benchmark --profile your-profile
 ```
 
@@ -157,7 +168,7 @@ cargo run -- upload README.md docs/aws-deploy-from-zero.md
 Then ask a question about one or more uploaded documents:
 
 ```sh
-cargo run -- chat-files qwen3_8b_awq_32k_g5 <file_id_1> <file_id_2> --message "compare the AWS deployment notes"
+cargo run -- chat-files qwen3_4b_inf2_4k <file_id_1> <file_id_2> --message "compare the AWS deployment notes"
 ```
 
 For a single document, `chat-file` still works:
@@ -172,11 +183,11 @@ Use `cargo run -- aws models` to list the available model profiles.
 
 Each profile describes one model and the hardware Emberlane recommends for it.
 
-The public AWS runtime is `vLLM CUDA`.
+The public AWS runtimes are `vLLM Neuron` for the default Inf2 path and `vLLM CUDA` for NVIDIA fallback paths.
 
-The default AWS CUDA path is `qwen3_8b_awq_32k_g5` (model id `Qwen/Qwen3-8B-AWQ`) on `g5.2xlarge` in `economy` mode. That is the recommended first path for public release.
+The default AWS path is `qwen3_4b_inf2_4k` (model id `Qwen/Qwen3-4B`) on `inf2.xlarge` in `economy` mode. That is the recommended first path for public release.
 
-That default is tuned for text-only serving: Emberlane passes the profile-specific max context length, quantization, and the Qwen3 reasoning parser so the single-GPU path stays practical.
+That default is tuned for text-only serving: Emberlane passes the profile-specific max context length and Neuron launch flags so the single-GPU Inf2 path stays practical.
 
 `economy` is Spot + ready-first, `balanced` is On-Demand + ready-first, and `always-on` is On-Demand + never sleeps.
 
@@ -184,13 +195,19 @@ Model selection guide:
 
 | Profile | Best for | Kind | Notes |
 | --- | --- | --- | --- |
-| `qwen3_8b_awq_32k_g5` | coding-simple, general research | text | public default, budget-friendly |
-| `qwen3_8b_inf2_4k` | coding-simple, lower-cost experiment | text | experimental Inf2 path, 4K public proof |
-| `qwen3_8b_awq_128k` | research-deep, long context | text | advanced long-context profile |
-| `gemma3_12b_128k` | research-general, image + text tasks | multimodal | use this when you want vision input |
-| `deepseek_r1_distill_qwen14b_64k` | coding-hard, reasoning | text | slower, more deliberate |
+| `qwen35_2b` | single agent, simple coding | multimodal/text | `cyankiwi/Qwen3.5-2B-AWQ-4bit` on `g5.2xlarge`; Emberlane serves text-only |
+| `qwen35_9b` | hard coding, deep research, reasoning | multimodal/text | `QuantTrio/Qwen3.5-9B-AWQ` on `g6e.2xlarge`; Emberlane serves text-only |
+| `qwen3_4b_inf2_4k` | simple coding | text | cheapest public Inf2 starter |
+| `qwen3_8b_inf2_32k` | Inf2 32K validation, deep research | text | cheaper Inf2 8B lane on `inf2.8xlarge`; safe fallback is `inf2.24xlarge` |
+| `qwen3_8b_awq_32k_g5` | simple coding | text | budget CUDA path |
+| `qwen3_8b_awq_32k` | simple agent | text | larger CUDA path |
+| `qwen3_8b_awq_128k` | deep research | text | deepest CUDA context option |
+| `gemma3_12b_128k` | multimodal | multimodal | use this when you want vision input |
+| `deepseek_r1_distill_qwen14b_64k` | hard agent | text | slower, more deliberate |
 
-Inf2/Neuron is supported for experimental evaluation, but it is not presented as universally cheaper. Use it when you want to benchmark the hardware tradeoffs yourself.
+Legacy Qwen2.5 Inf2 compatibility profiles remain hidden unless you pass `--experimental` or `--show-hidden`.
+
+Inf2 is now a first-class AWS option. Use the Qwen3 Inf2 profiles when you want the cheapest public path, and keep the CUDA profiles for NVIDIA headroom or larger-context comparisons.
 
 For multi-model comparison:
 

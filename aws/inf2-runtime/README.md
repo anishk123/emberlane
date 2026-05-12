@@ -1,98 +1,61 @@
-# Emberlane Inf2 Runtime Pack
+# Inf2 Runtime Pack
 
-This pack runs an OpenAI-compatible vLLM/Neuron server on AWS Inf2 so Emberlane AWS WakeBridge has a real runtime to wake.
+The Emberlane Inf2 Runtime Pack turns an AWS Inf2 EC2 instance into a wakeable OpenAI-compatible LLM runtime.
 
-The first success path is `llama32_1b`:
+## Public Inf2 Profiles
 
-- Model: `meta-llama/Llama-3.2-1B`
-- Runtime: `vllm-neuron`
-- Instance: `inf2.xlarge`
-- vLLM port: `8000`
-- ALB/nginx port: `8080`
-- Health: `/health`
-- OpenAI-compatible API: `/v1/chat/completions`
+The public Inf2 targets are centered on Qwen3:
 
-`qwen25_15b` is included as experimental until validated on Inf2.
-`qwen3_4b` is the first conservative Qwen3 Inf2 starting point and uses `Qwen/Qwen3-4B-Instruct-2507` on `inf2.xlarge`.
-`qwen3_8b_inf2_4k` is the first Qwen3-8B Inf2 experiment. It uses a local checkpoint path, `max_model_len=4096`, `max_num_seqs=8`, `block_size=32`, and `num_gpu_blocks_override=8` on `inf2.xlarge`.
+- `Qwen/Qwen3-4B` on `inf2.xlarge`
+- `Qwen/Qwen3-8B` on `inf2.8xlarge`, with `inf2.24xlarge` as the larger-memory fallback
 
-## Files
+Legacy Qwen2.5 Inf2 compatibility profiles remain hidden and only appear with `--experimental` or `--show-hidden`.
 
-- `models.yaml`: model profiles.
-- `scripts/render-env.py`: renders profile env vars without PyYAML.
-- `start-server.sh`: starts `vllm serve` with Neuron flags, then launches a small proxy on port `8080`.
-- `bootstrap.sh`: prepares directories, validates `/dev/neuron0`, installs systemd, and starts the service.
-- `server/health_proxy.py`: serves `/health` and proxies `/v1/*` to the upstream model server.
-- `nginx/nginx.conf`: optional reference config if you prefer nginx instead of the built-in Python proxy.
-- `Dockerfile.neuron`: Neuron/vLLM image scaffold.
-
-## Build Image
+## Quick Start
 
 ```sh
+cd aws/inf2-runtime
 docker build -f Dockerfile.neuron -t emberlane-inf2-neuron .
 ```
 
-The vLLM Neuron build can be slow and version-sensitive. For practical AWS use, validate on one Inf2 instance, then bake an AMI or image with model/cache artifacts.
+For a manual boot on an Inf2 EC2 instance:
 
-## Manual Inf2 Smoke Path
+1. Pick an AWS Neuron Deep Learning AMI for Ubuntu.
+2. Use `inf2.xlarge` for `qwen3_4b_inf2_4k`.
+3. Use `inf2.8xlarge` for `qwen3_8b_inf2_32k`; move to `inf2.24xlarge` if the 32K test needs more accelerator memory.
+4. Attach at least 100 GB gp3.
+5. Ensure `/dev/neuron0` exists.
+6. Copy `aws/inf2-runtime` to `/opt/emberlane/inf2-runtime`.
+7. Create `/etc/emberlane/inf2.env`.
+8. Run `sudo /opt/emberlane/inf2-runtime/bootstrap.sh`.
 
-1. Launch an `inf2.xlarge` using an AWS Neuron Deep Learning AMI.
-2. Attach at least 100 GB gp3 root volume.
-3. Copy this runtime pack to `/opt/emberlane/inf2-runtime`.
-4. Create `/etc/emberlane/inf2.env`:
+## Model Weights
 
 ```sh
-MODEL_PROFILE=llama32_1b
 HF_TOKEN=...
-HF_HOME=/opt/emberlane/model-cache
-TRANSFORMERS_CACHE=/opt/emberlane/model-cache
-NEURON_COMPILED_ARTIFACTS=/opt/emberlane/neuron-cache
+MODEL_PROFILE=qwen3_4b_inf2_4k
 ```
 
-For Qwen3 Inf2 experiments, use `MODEL_PROFILE=qwen3_4b`.
-For the Qwen3-8B Inf2 experiment, use `MODEL_PROFILE=qwen3_8b_inf2_4k`.
+For the larger Inf2 profile, set `MODEL_PROFILE=qwen3_8b_inf2_32k`.
 
-5. Run:
+## Environment
 
-```sh
-sudo ./bootstrap.sh
-./scripts/smoke-test.sh --wait
-```
+The runtime exposes:
 
-## Compiled Artifact Cache
+- `GET /health`
+- `GET /v1/models`
+- `POST /v1/chat/completions`
 
-Use EBS for the local cache:
+The runtime proxy listens on port `8080` and forwards `/v1/*` to the server on port `8000`.
 
-```sh
-NEURON_COMPILED_ARTIFACTS=/opt/emberlane/neuron-cache
-```
-
-Optionally sync artifacts with S3:
+## S3 Artifacts
 
 ```sh
-S3_NEURON_ARTIFACTS_URI=s3://bucket/prefix/neuron-artifacts/llama32_1b/
+S3_NEURON_ARTIFACTS_URI=s3://bucket/prefix/neuron-artifacts/qwen3_4b_inf2_4k/
 SYNC_ARTIFACTS_BACK=true
 ```
 
-On boot, `start-server.sh` syncs from S3 before starting vLLM. If `SYNC_ARTIFACTS_BACK=true`, it syncs the cache back after the server exits.
+## Notes
 
-## Health Contract
-
-`GET /health` returns 200 only when `GET /v1/models` succeeds. Before the model is ready it returns 503 so ALB and Emberlane do not route too early. The same proxy on port `8080` forwards `/v1/*` to vLLM on port `8000`.
-
-## ASG/ALB
-
-Use an ALB target group with:
-
-- Port: `8080`
-- Health path: `/health`
-- Matcher: `200`
-
-Initial ASG shape:
-
-- min `0`
-- desired `0`
-- max `1`
-- optional Warm Pool in stopped or hibernated state
-
-No fixed wake-time claims are made. First boot may include model download and Neuron compilation.
+- Inf2 can be cost-effective, but it still adds compile and bootstrap overhead.
+- Emberlane does not promise fixed wake times.

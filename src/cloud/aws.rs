@@ -12,7 +12,7 @@ use crate::{
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::{fs, path::PathBuf, process::Stdio, time::Instant};
+use std::{collections::BTreeSet, fs, path::PathBuf, process::Stdio, time::Instant};
 use tokio::process::Command;
 
 fn shell_quote(value: &str) -> String {
@@ -412,6 +412,70 @@ impl AwsBackend {
         }))
     }
 
+    fn spot_quota_family_for_instance(instance_type: &str) -> Option<&'static str> {
+        if instance_type.starts_with("g") {
+            Some("All G and VT Spot Instance Requests")
+        } else if instance_type.starts_with("inf") {
+            Some("All Inf Spot Instance Requests")
+        } else {
+            None
+        }
+    }
+
+    async fn instance_vcpu_count(&self) -> Result<Option<u64>, EmberlaneError> {
+        let instance_type = self.config.instance_type.clone();
+        let region = self.config.region.clone();
+        let result = self
+            .run_aws_cli(&[
+                "ec2",
+                "describe-instance-types",
+                "--instance-types",
+                &instance_type,
+                "--query",
+                "InstanceTypes[0].VCpuInfo.DefaultVCpus",
+                "--output",
+                "text",
+                "--region",
+                &region,
+            ])
+            .await?;
+        if result["status"].as_i64().unwrap_or(1) != 0 {
+            return Ok(None);
+        }
+        let value = result["stdout"].as_str().unwrap_or("").trim();
+        if value.is_empty() || value == "None" || value == "null" {
+            return Ok(None);
+        }
+        Ok(value.parse::<u64>().ok())
+    }
+
+    async fn spot_quota_value(&self, quota_name: &str) -> Result<Option<f64>, EmberlaneError> {
+        let region = self.config.region.clone();
+        let query = format!("Quotas[?QuotaName=='{quota_name}'].Value | [0]");
+        let result = self
+            .run_aws_cli(&[
+                "service-quotas",
+                "list-service-quotas",
+                "--service-code",
+                "ec2",
+                "--query",
+                &query,
+                "--output",
+                "text",
+                "--region",
+                &region,
+            ])
+            .await?;
+        if result["status"].as_i64().unwrap_or(1) != 0 {
+            return Ok(None);
+        }
+        let value = result["stdout"].as_str().unwrap_or("").trim();
+        if value.is_empty() || value == "None" || value == "null" {
+            return Ok(None);
+        }
+        Ok(value.parse::<f64>().ok())
+    }
+
     fn capacity_fallbacks(&self) -> Vec<String> {
         profiles::profile(&self.config.model_profile)
             .map(|p| {
@@ -424,10 +488,21 @@ impl AwsBackend {
                 }
                 fallbacks.extend(p.fallback_instances);
                 fallbacks.retain(|value| !value.trim().is_empty());
-                fallbacks.dedup();
+                let mut seen = BTreeSet::new();
+                fallbacks.retain(|value| seen.insert(value.clone()));
                 fallbacks
             })
             .unwrap_or_default()
+    }
+
+    fn spot_fallback_instance_types(&self) -> Vec<String> {
+        if !matches!(self.config.mode, CostMode::Economy) {
+            return Vec::new();
+        }
+        self.capacity_fallbacks()
+            .into_iter()
+            .filter(|instance| instance != &self.config.instance_type)
+            .collect()
     }
 
     fn profile_visibility(profile: &profiles::ModelProfile) -> &str {
@@ -443,7 +518,6 @@ impl AwsBackend {
         accelerator: Accelerator,
     ) -> Result<String, EmberlaneError> {
         let mut args = vec![
-            "vllm".to_string(),
             "serve".to_string(),
             profile.model_id.clone(),
             "--max-model-len".to_string(),
@@ -509,6 +583,38 @@ impl AwsBackend {
                 self.config.instance_type, self.config.region, self.config.model_profile, fallback_text
             )));
         }
+        Ok(())
+    }
+
+    async fn ensure_spot_quota_available(&self) -> Result<(), EmberlaneError> {
+        if !matches!(self.config.mode, CostMode::Economy) {
+            return Ok(());
+        }
+
+        let Some(quota_name) = Self::spot_quota_family_for_instance(&self.config.instance_type)
+        else {
+            return Ok(());
+        };
+
+        let Some(vcpus) = self.instance_vcpu_count().await? else {
+            return Ok(());
+        };
+
+        let Some(quota_value) = self.spot_quota_value(quota_name).await? else {
+            return Ok(());
+        };
+
+        if quota_value < vcpus as f64 {
+            return Err(EmberlaneError::ProviderNotConfigured(format!(
+                "Spot quota for '{}' in region '{}' is {:.0} vCPUs, but '{}' needs {} vCPUs. Use --mode balanced for on-demand capacity or request a Spot quota increase in EC2 Service Quotas.",
+                quota_name,
+                self.config.region,
+                quota_value,
+                self.config.instance_type,
+                vcpus
+            )));
+        }
+
         Ok(())
     }
 
@@ -618,6 +724,94 @@ impl AwsBackend {
         Ok((!value.is_empty()).then_some(value))
     }
 
+    fn terraform_outputs(stdout: Option<&str>) -> Option<Value> {
+        stdout.and_then(|text| serde_json::from_str::<Value>(text).ok())
+    }
+
+    fn terraform_output_string(outputs: Option<&Value>, key: &str) -> Option<String> {
+        outputs
+            .and_then(|value| value.get(key))
+            .and_then(|value| value.get("value"))
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(ToString::to_string)
+    }
+
+    pub(crate) fn normalize_post_apply_wake(result: Value) -> Value {
+        let status = result.get("status").and_then(Value::as_i64).unwrap_or(1);
+        let stderr = result.get("stderr").and_then(Value::as_str).unwrap_or("");
+        if status == 0 {
+            return json!({
+                "ok": true,
+                "state": "wake_requested",
+                "message": "Requested ASG desired capacity after deploy.",
+                "raw": result
+            });
+        }
+        if stderr.contains("ScalingActivityInProgress") {
+            return json!({
+                "ok": true,
+                "state": "already_launching",
+                "message": "ASG is already launching capacity; no extra wake request is needed.",
+                "raw": result
+            });
+        }
+        json!({
+            "ok": false,
+            "state": "wake_request_failed",
+            "message": "Post-apply ASG wake request failed. Check ASG scaling activities for the current capacity state.",
+            "raw": result
+        })
+    }
+
+    async fn reconcile_asg_desired_capacity(
+        &self,
+        outputs: Option<&Value>,
+        vars: &Value,
+        apply: &Value,
+    ) -> Result<Value, EmberlaneError> {
+        if apply["status"].as_i64().unwrap_or(1) != 0 {
+            return Ok(json!({
+                "skipped": true,
+                "reason": "terraform apply did not succeed"
+            }));
+        }
+
+        let desired = vars
+            .get("asg_desired_capacity")
+            .and_then(Value::as_i64)
+            .unwrap_or(0);
+        if desired <= 0 {
+            return Ok(json!({
+                "skipped": true,
+                "reason": "rendered ASG desired capacity is zero"
+            }));
+        }
+
+        let Some(asg_name) = Self::terraform_output_string(outputs, "asg_name") else {
+            return Ok(json!({
+                "skipped": true,
+                "reason": "terraform output asg_name is unavailable"
+            }));
+        };
+
+        let result = self
+            .run_aws_cli(&[
+                "autoscaling",
+                "set-desired-capacity",
+                "--auto-scaling-group-name",
+                &asg_name,
+                "--desired-capacity",
+                &desired.to_string(),
+                "--honor-cooldown",
+                "--region",
+                &self.config.region,
+            ])
+            .await?;
+        Ok(Self::normalize_post_apply_wake(result))
+    }
+
     async fn post_chat(
         &self,
         endpoint: &str,
@@ -625,11 +819,16 @@ impl AwsBackend {
         include_auth: bool,
     ) -> Result<Value, EmberlaneError> {
         let profile = profiles::profile(&self.config.model_profile)?;
-        let body = json!({
+        let mut body = json!({
             "model": profile.model_id,
             "messages": [{"role": "user", "content": message}],
+            "max_tokens": 512,
+            "temperature": 0.2,
             "stream": false
         });
+        if profile.reasoning_parser.as_deref() == Some("qwen3") {
+            body["chat_template_kwargs"] = json!({"enable_thinking": false});
+        }
         let mut req = reqwest::Client::new()
             .post(format!("{endpoint}/v1/chat/completions"))
             .json(&body);
@@ -642,6 +841,21 @@ impl AwsBackend {
         let status = resp.status().as_u16();
         let json_body = resp.json::<Value>().await.unwrap_or_else(|_| json!({}));
         Ok(json!({"status": status, "body": json_body, "endpoint": endpoint}))
+    }
+
+    fn should_wake_through_lambda(result: &Value) -> bool {
+        matches!(
+            result.get("status").and_then(Value::as_u64),
+            Some(401 | 403 | 404 | 502 | 503 | 504)
+        )
+    }
+
+    fn is_lambda_timeout(result: &Value) -> bool {
+        result
+            .get("body")
+            .and_then(|body| body.get("errorType"))
+            .and_then(Value::as_str)
+            == Some("Sandbox.Timedout")
     }
 }
 
@@ -756,6 +970,7 @@ impl CloudBackend for AwsBackend {
 
     async fn render_deploy_vars(&self) -> Result<Value, EmberlaneError> {
         self.ensure_instance_type_available().await?;
+        self.ensure_spot_quota_available().await?;
         let profile = profiles::profile(&self.config.model_profile)?;
         if Self::profile_visibility(&profile) == "hidden" && !self.config.allow_hidden_profiles {
             return Err(EmberlaneError::InvalidRequest(format!(
@@ -783,6 +998,19 @@ impl CloudBackend for AwsBackend {
                 EmberlaneError::Internal(format!("failed to render rope scaling: {err}"))
             })?;
         let vllm_command = Self::build_vllm_command(&profile, self.config.accelerator)?;
+        if vllm_command.trim().is_empty() {
+            return Err(EmberlaneError::Internal(format!(
+                "failed to render vLLM command for model profile '{}'",
+                self.config.model_profile
+            )));
+        }
+        let expected_model = shell_quote(&profile.model_id);
+        if !vllm_command.starts_with(&format!("serve {expected_model} ")) {
+            return Err(EmberlaneError::Internal(format!(
+                "rendered vLLM command for model profile '{}' does not start with 'serve <model>': {}",
+                self.config.model_profile, vllm_command
+            )));
+        }
         let obj = vars.as_object_mut().unwrap();
         obj.insert("app_name".to_string(), json!("emberlane"));
         obj.insert("aws_region".to_string(), json!(self.config.region));
@@ -844,6 +1072,10 @@ impl CloudBackend for AwsBackend {
         obj.insert(
             "instance_type".to_string(),
             json!(self.config.instance_type),
+        );
+        obj.insert(
+            "fallback_instance_types".to_string(),
+            json!(self.spot_fallback_instance_types()),
         );
         obj.insert("ami_id".to_string(), json!(ami_id));
         obj.insert(
@@ -999,6 +1231,14 @@ impl CloudBackend for AwsBackend {
             .run_terraform(&["apply", "-auto-approve"], true)
             .await?;
         let terraform_outputs = self.run_terraform(&["output", "-json"], false).await.ok();
+        let parsed_outputs = Self::terraform_outputs(
+            terraform_outputs
+                .as_ref()
+                .and_then(|value| value.get("stdout").and_then(Value::as_str)),
+        );
+        let post_apply_wake = self
+            .reconcile_asg_desired_capacity(parsed_outputs.as_ref(), &vars, &apply)
+            .await?;
         let endpoint_url = self
             .run_terraform(&["output", "-raw", "lambda_function_url"], false)
             .await
@@ -1019,11 +1259,7 @@ impl CloudBackend for AwsBackend {
                 })?,
             )?;
         }
-        if let Some(outputs) = terraform_outputs
-            .as_ref()
-            .and_then(|value| value.get("stdout").and_then(Value::as_str))
-            .and_then(|text| serde_json::from_str::<Value>(text).ok())
-        {
+        if let Some(outputs) = parsed_outputs.as_ref() {
             if let Some(bucket) = outputs
                 .get("artifact_bucket_name")
                 .and_then(|v| v.get("value"))
@@ -1052,6 +1288,7 @@ impl CloudBackend for AwsBackend {
             "tfvars": self.tfvars_path(),
             "init": init,
             "apply": apply,
+            "post_apply_wake": post_apply_wake,
             "endpoint_url": endpoint_url
         }))
     }
@@ -1074,10 +1311,31 @@ impl CloudBackend for AwsBackend {
 
     async fn chat(&self, message: &str) -> Result<Value, EmberlaneError> {
         let endpoint = self.endpoint().await?;
+        let alb_endpoint = self.alb_endpoint().await?;
+
+        if let Some(alb_endpoint) = alb_endpoint.as_deref() {
+            if alb_endpoint != endpoint {
+                match self.post_chat(alb_endpoint, message, false).await {
+                    Ok(alb_result) if !Self::should_wake_through_lambda(&alb_result) => {
+                        let status = alb_result["status"].as_u64().unwrap_or(0);
+                        return Ok(json!({
+                            "status": status,
+                            "body": alb_result["body"],
+                            "endpoint": alb_result["endpoint"],
+                            "wake_endpoint": endpoint
+                        }));
+                    }
+                    Ok(_) | Err(_) => {
+                        // The ALB has no ready target or is protected; use Lambda to wake/proxy.
+                    }
+                }
+            }
+        }
+
         let result = self.post_chat(&endpoint, message, true).await?;
         let status = result["status"].as_u64().unwrap_or(0);
-        if matches!(status, 401 | 403) {
-            if let Some(alb_endpoint) = self.alb_endpoint().await? {
+        if matches!(status, 401 | 403) || Self::is_lambda_timeout(&result) {
+            if let Some(alb_endpoint) = alb_endpoint {
                 if alb_endpoint != endpoint {
                     let fallback = self.post_chat(&alb_endpoint, message, false).await?;
                     let fallback_status = fallback["status"].as_u64().unwrap_or(0);
@@ -1148,5 +1406,30 @@ impl CloudBackend for AwsBackend {
                 {"mode": "always-on", "concept": "keeps one instance running and does not auto-scale down on idle"}
             ]
         }))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::AwsBackend;
+
+    #[test]
+    fn spot_quota_family_maps_instance_types() {
+        assert_eq!(
+            AwsBackend::spot_quota_family_for_instance("g5.2xlarge"),
+            Some("All G and VT Spot Instance Requests")
+        );
+        assert_eq!(
+            AwsBackend::spot_quota_family_for_instance("g6e.xlarge"),
+            Some("All G and VT Spot Instance Requests")
+        );
+        assert_eq!(
+            AwsBackend::spot_quota_family_for_instance("inf2.xlarge"),
+            Some("All Inf Spot Instance Requests")
+        );
+        assert_eq!(
+            AwsBackend::spot_quota_family_for_instance("c6i.large"),
+            None
+        );
     }
 }

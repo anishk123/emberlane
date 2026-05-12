@@ -57,6 +57,7 @@ Emberlane auto-selects a sensible AMI for the chosen accelerator when you run `c
 - Lambda Function URL auth defaults to `NONE`; set `api_key`.
 - The ALB header gate is optional. Emberlane can run without `X-Emberlane-Secret` by default to keep the public dev path easy to use.
 - ASG `desired_capacity` is ignored by Terraform lifecycle so Emberlane/Lambda can wake and sleep the group without Terraform fighting it.
+- ASG capacity waiting is disabled in Terraform. Temporary EC2 capacity misses are handled by the ASG retry loop and surfaced through Emberlane/AWS status instead of failing `terraform apply`.
 - Warm Pool is disabled by default. Enable it only if you explicitly want extra prepared capacity and can afford the quota tradeoff.
 
 ## Validation

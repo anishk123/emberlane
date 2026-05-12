@@ -70,8 +70,17 @@ ensure_ssm_agent
 
 # 3. Preflight Diagnostic Block
 echo "[emberlane] --- PREFLIGHT LOGS ---"
-echo "AMI_ID: $(curl -s http://169.254.169.254/latest/meta-data/ami-id)"
-echo "INSTANCE_TYPE: $(curl -s http://169.254.169.254/latest/meta-data/instance-type)"
+IMDS_TOKEN="$(curl -s -X PUT http://169.254.169.254/latest/api/token -H 'X-aws-ec2-metadata-token-ttl-seconds: 21600' || true)"
+metadata() {
+    local path="$1"
+    if [[ -n "$${IMDS_TOKEN}" ]]; then
+        curl -s -H "X-aws-ec2-metadata-token: $${IMDS_TOKEN}" "http://169.254.169.254/latest/meta-data/$${path}" || true
+    else
+        curl -s "http://169.254.169.254/latest/meta-data/$${path}" || true
+    fi
+}
+echo "AMI_ID: $(metadata ami-id)"
+echo "INSTANCE_TYPE: $(metadata instance-type)"
 echo "UNAME: $(uname -a)"
 echo "OS_RELEASE: $(cat /etc/os-release | grep PRETTY_NAME)"
 docker --version || echo "docker not found"
@@ -79,11 +88,13 @@ docker --version || echo "docker not found"
 if [[ "${accelerator}" == "cuda" ]]; then
     nvidia-smi || { echo "ERROR: nvidia-smi failed on CUDA instance"; exit 1; }
 elif [[ "${accelerator}" == "inf2" ]]; then
-    if command -v neuron-ls >/dev/null 2>&1; then
+    if [[ ! -e /dev/neuron0 ]]; then
+        echo "ERROR: /dev/neuron0 not found on Inf2 instance. Use an Inf2 instance with Neuron drivers/runtime installed."
+        exit 1
+    elif command -v neuron-ls >/dev/null 2>&1; then
         neuron-ls
     else
-        echo "ERROR: neuron-ls not found on Inf2 instance"
-        exit 1
+        echo "WARNING: neuron-ls not found on host; continuing because the Neuron vLLM container can still use /dev/neuron* devices."
     fi
 fi
 echo "[emberlane] --- PREFLIGHT COMPLETE ---"
@@ -98,8 +109,6 @@ QUANTIZATION=${quantization}
 ROPE_SCALING_JSON=${rope_scaling_json}
 GPU_MEMORY_UTILIZATION=${gpu_memory_utilization}
 ENFORCE_EAGER=${enforce_eager}
-VLLM_EXTRA_ARGS=${vllm_extra_args}
-VLLM_COMMAND=${vllm_command}
 LANGUAGE_MODEL_ONLY=${language_model_only}
 REASONING_PARSER=${reasoning_parser}
 ACCELERATOR=${accelerator}
@@ -119,12 +128,26 @@ HF_TOKEN_SSM_PARAMETER_NAME=${hf_token_ssm_parameter_name}
 ENV
 chmod 0600 /etc/emberlane/inf2.env
 
+cat >/etc/emberlane/vllm-command <<'EOF'
+${vllm_command}
+EOF
+
 if command -v aws >/dev/null 2>&1; then
   if [[ -n "${hf_token_ssm_parameter_name}" ]]; then
     echo "[emberlane] loading HF token from SSM"
     HF_TOKEN_VALUE="$(aws ssm get-parameter --name "${hf_token_ssm_parameter_name}" --with-decryption --query Parameter.Value --output text --region "${aws_region}")"
     printf 'HF_TOKEN=%q\n' "$HF_TOKEN_VALUE" >>/etc/emberlane/inf2.env
   fi
+fi
+
+if [[ -n "${runtime_pack_s3_uri}" ]]; then
+    echo "[emberlane] staging runtime pack from ${runtime_pack_s3_uri}"
+    rm -rf /opt/emberlane/inf2-runtime
+    mkdir -p /opt/emberlane/inf2-runtime
+    TMP_RUNTIME_PACK="/tmp/emberlane-inf2-runtime-pack.zip"
+    aws s3 cp "${runtime_pack_s3_uri}" "$${TMP_RUNTIME_PACK}" --region "${aws_region}"
+    unzip -o "$${TMP_RUNTIME_PACK}" -d /opt/emberlane/inf2-runtime
+    chmod +x /opt/emberlane/inf2-runtime/bootstrap.sh /opt/emberlane/inf2-runtime/start-server.sh /opt/emberlane/inf2-runtime/scripts/*.sh /opt/emberlane/inf2-runtime/scripts/*.py /opt/emberlane/inf2-runtime/server/*.py || true
 fi
 
 # 5. Runtime Launch Logic
@@ -134,8 +157,65 @@ IMAGE="vllm/vllm-openai:latest"
 GPU_FLAGS="--gpus all"
 # Emberlane builds the command with safetensors prefetch on CUDA so the instance
 # spends less time blocked on weight loads during startup.
-CMD_ARGS="${vllm_command}"
-    
+    # docker run --rm --name emberlane-vllm
+    cat >/usr/local/bin/emberlane-launch-runtime.sh <<UNIT
+#!/usr/bin/env bash
+set -euo pipefail
+
+/usr/bin/docker stop emberlane-vllm >/dev/null 2>&1 || true
+/usr/bin/docker rm emberlane-vllm >/dev/null 2>&1 || true
+
+exec python3 - <<'PY'
+import os
+import shlex
+import sys
+
+with open("/etc/emberlane/vllm-command", "r", encoding="utf-8") as fh:
+    raw_command = fh.read().strip()
+
+if not raw_command:
+    sys.stderr.write("Emberlane startup error: /etc/emberlane/vllm-command is empty. Re-run deploy so Terraform renders vllm_command.\n")
+    sys.exit(64)
+
+vllm_args = shlex.split(raw_command)
+if len(vllm_args) < 2 or vllm_args[0] != "serve" or not vllm_args[1].strip():
+    sys.stderr.write(f"Emberlane startup error: invalid vLLM command: {raw_command!r}\n")
+    sys.exit(64)
+
+cmd = [
+    "/usr/bin/docker",
+    "run",
+    "--rm",
+    "--name",
+    "emberlane-vllm",
+    "--entrypoint",
+    "vllm",
+    "--gpus",
+    "all",
+    "--shm-size=10.24gb",
+    "-v",
+    "/opt/emberlane/model-cache:/opt/emberlane/model-cache",
+    "-p",
+    "${runtime_port}:8000",
+    "-e",
+    "HF_HOME=/opt/emberlane/model-cache",
+    "-e",
+    "TRANSFORMERS_CACHE=/opt/emberlane/model-cache",
+    "-e",
+    "XDG_CACHE_HOME=/opt/emberlane/model-cache",
+    "-e",
+    "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True",
+    "-e",
+    f"HF_TOKEN={os.environ.get('HF_TOKEN', '')}",
+    "vllm/vllm-openai:latest",
+]
+cmd.extend(vllm_args)
+
+os.execv(cmd[0], cmd)
+PY
+UNIT
+    chmod +x /usr/local/bin/emberlane-launch-runtime.sh
+
     cat >/etc/systemd/system/emberlane-runtime.service <<UNIT
 [Unit]
 Description=Emberlane CUDA Runtime
@@ -145,18 +225,7 @@ Wants=docker.service
 [Service]
 EnvironmentFile=/etc/emberlane/inf2.env
 Restart=always
-ExecStartPre=-/usr/bin/docker stop emberlane-vllm
-ExecStartPre=-/usr/bin/docker rm emberlane-vllm
-ExecStart=/usr/bin/docker run --rm --name emberlane-vllm \
-  $GPU_FLAGS --shm-size=10.24gb \
-  -v /opt/emberlane/model-cache:/opt/emberlane/model-cache \
-  -p ${runtime_port}:8000 \
-  -e HF_HOME=/opt/emberlane/model-cache \
-  -e TRANSFORMERS_CACHE=/opt/emberlane/model-cache \
-  -e XDG_CACHE_HOME=/opt/emberlane/model-cache \
-  -e PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
-  -e HF_TOKEN=\$${HF_TOKEN} \
-  $IMAGE $CMD_ARGS
+ExecStart=/usr/local/bin/emberlane-launch-runtime.sh
 ExecStop=/usr/bin/docker stop emberlane-vllm
 
 [Install]
@@ -177,8 +246,8 @@ elif [[ "${accelerator}" == "inf2" ]]; then
 import huggingface_hub
 PY
     then
-        python3 -m pip install --upgrade pip >/dev/null 2>&1
-        python3 -m pip install huggingface_hub >/dev/null 2>&1
+        python3 -m pip install --upgrade --break-system-packages pip >/dev/null 2>&1
+        python3 -m pip install --break-system-packages huggingface_hub >/dev/null 2>&1
     fi
     MODEL_LOCAL_PATH="$(python3 - <<'PY'
 import os
@@ -192,7 +261,72 @@ path = snapshot_download(
 print(path)
 PY
 )"
-    CMD_ARGS="$(printf '%s' "${vllm_command}" | sed "s|${model_id}|${MODEL_LOCAL_PATH}|")"
+    CMD_ARGS="$(printf '%s' "${vllm_command}" | sed "s|${model_id}|$${MODEL_LOCAL_PATH}|")"
+    cat >/etc/emberlane/vllm-command <<EOF
+$${CMD_ARGS}
+EOF
+
+    # docker run --rm --name emberlane-vllm
+    cat >/usr/local/bin/emberlane-launch-runtime.sh <<UNIT
+#!/usr/bin/env bash
+set -euo pipefail
+
+/usr/bin/docker stop emberlane-vllm >/dev/null 2>&1 || true
+/usr/bin/docker rm emberlane-vllm >/dev/null 2>&1 || true
+
+exec python3 - <<'PY'
+import os
+import shlex
+import sys
+
+with open("/etc/emberlane/vllm-command", "r", encoding="utf-8") as fh:
+    raw_command = fh.read().strip()
+
+if not raw_command:
+    sys.stderr.write("Emberlane startup error: /etc/emberlane/vllm-command is empty. Re-run deploy so Terraform renders vllm_command.\n")
+    sys.exit(64)
+
+vllm_args = shlex.split(raw_command)
+if len(vllm_args) < 2 or vllm_args[0] != "serve" or not vllm_args[1].strip():
+    sys.stderr.write(f"Emberlane startup error: invalid vLLM command: {raw_command!r}\n")
+    sys.exit(64)
+
+cmd = [
+    "/usr/bin/docker",
+    "run",
+    "--rm",
+    "--name",
+    "emberlane-vllm",
+    "--entrypoint",
+    "vllm",
+]
+cmd.extend(shlex.split("$${NEURON_DEVICES}"))
+cmd.extend([
+    "--shm-size=2g",
+    "-e",
+    "VLLM_USE_V1=0",
+    "-e",
+    "VLLM_ATTENTION_BACKEND=NEURON",
+    "-p",
+    "${runtime_port}:8000",
+    "-v",
+    "/opt/emberlane/model-cache:/opt/emberlane/model-cache",
+    "-e",
+    "HF_HOME=/opt/emberlane/model-cache",
+    "-e",
+    "TRANSFORMERS_CACHE=/opt/emberlane/model-cache",
+    "-e",
+    "XDG_CACHE_HOME=/opt/emberlane/model-cache",
+    "-e",
+    f"HF_TOKEN={os.environ.get('HF_TOKEN', '')}",
+    "public.ecr.aws/neuron/pytorch-inference-vllm-neuronx:0.16.0-neuronx-py312-sdk2.29.1-ubuntu24.04",
+])
+cmd.extend(vllm_args)
+
+os.execv(cmd[0], cmd)
+PY
+UNIT
+    chmod +x /usr/local/bin/emberlane-launch-runtime.sh
 
     cat >/etc/systemd/system/emberlane-runtime.service <<UNIT
 [Unit]
@@ -203,20 +337,7 @@ Wants=docker.service
 [Service]
 EnvironmentFile=/etc/emberlane/inf2.env
 Restart=always
-ExecStartPre=-/usr/bin/docker stop emberlane-vllm
-ExecStartPre=-/usr/bin/docker rm emberlane-vllm
-ExecStart=/usr/bin/docker run --rm --name emberlane-vllm \
-  $NEURON_DEVICES \
-  --shm-size=2g \
-  -e VLLM_USE_V1=0 \
-  -e VLLM_ATTENTION_BACKEND=NEURON \
-  -p ${runtime_port}:8000 \
-  -v /opt/emberlane/model-cache:/opt/emberlane/model-cache \
-  -e HF_HOME=/opt/emberlane/model-cache \
-  -e TRANSFORMERS_CACHE=/opt/emberlane/model-cache \
-  -e XDG_CACHE_HOME=/opt/emberlane/model-cache \
-  -e HF_TOKEN=\$${HF_TOKEN} \
-  $IMAGE $CMD_ARGS
+ExecStart=/usr/local/bin/emberlane-launch-runtime.sh
 ExecStop=/usr/bin/docker stop emberlane-vllm
 
 [Install]

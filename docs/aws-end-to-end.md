@@ -15,19 +15,19 @@ Client
 ## Steps
 
 1. Choose a model profile with `cargo run -- aws models`.
-2. Start with CUDA/G5 for the first path, or Inf2/Neuron for experimental cost-optimization work.
+2. Start with Qwen3 on Inf2/Neuron for the cheapest proven coding path, or CUDA/G5 if you want NVIDIA headroom.
 3. Bake an AMI or create a launch template that installs the runtime pack.
 4. Create an ALB target group on port `8080` with health path `/health`.
 5. Create an ASG with min `0`, desired `1` for `balanced` or `economy`, max `1`.
 6. Optionally add a Warm Pool in stopped or hibernated state only if you explicitly want that extra prepared-capacity tradeoff.
-7. Configure Emberlane with the `inf2-llama` `aws_asg` runtime.
+7. Configure Emberlane with the `qwen3_4b_inf2_4k` `aws_asg` runtime.
 8. Deploy Lambda WakeBridge.
 9. Send an OpenAI-compatible request.
 10. Verify streaming through the Node bridge if your Lambda networking supports it.
 
 For a repeatable Terraform version of these resources, start with [AWS Deploy From Zero](aws-deploy-from-zero.md). The Terraform pack creates the dev/test VPC path, S3 artifact bucket, IAM roles, ALB, launch template, ASG, optional Warm Pool, and Lambda WakeBridge Function URL.
 
-CUDA/G5 is the recommended first path for v1. Inf2/Neuron remains experimental; benchmark before claiming savings.
+Inf2/Neuron is the recommended first path for the public default. CUDA/G5 remains the fallback when you want NVIDIA headroom or larger CUDA-context profiles.
 
 Mode semantics:
 
@@ -53,11 +53,11 @@ User data should:
 mkdir -p /opt/emberlane
 # copy or clone the runtime pack to /opt/emberlane/inf2-runtime
 cat >/etc/emberlane/inf2.env <<'ENV'
-MODEL_PROFILE=llama32_1b
+MODEL_PROFILE=qwen3_4b_inf2_4k
 HF_HOME=/opt/emberlane/model-cache
 TRANSFORMERS_CACHE=/opt/emberlane/model-cache
 NEURON_COMPILED_ARTIFACTS=/opt/emberlane/neuron-cache
-S3_NEURON_ARTIFACTS_URI=s3://bucket/prefix/neuron-artifacts/llama32_1b/
+S3_NEURON_ARTIFACTS_URI=s3://bucket/prefix/neuron-artifacts/qwen3_4b_inf2_4k/
 SYNC_ARTIFACTS_BACK=false
 ENV
 /opt/emberlane/inf2-runtime/bootstrap.sh
@@ -70,14 +70,14 @@ curl http://ALB_DNS_NAME/health
 curl http://ALB_DNS_NAME/v1/models
 curl -X POST http://ALB_DNS_NAME/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -d '{"model":"meta-llama/Llama-3.2-1B","messages":[{"role":"user","content":"hello"}],"stream":false}'
+  -d '{"model":"Qwen/Qwen3-4B","messages":[{"role":"user","content":"hello"}],"stream":false}'
 ```
 
 Through Emberlane:
 
 ```sh
-cargo run -- aws doctor inf2-llama
-cargo run -- chat inf2-llama "hello"
+cargo run -- aws doctor qwen3_4b_inf2_4k
+cargo run -- chat qwen3_4b_inf2_4k "hello"
 ```
 
 Through Lambda WakeBridge:
@@ -86,7 +86,7 @@ Through Lambda WakeBridge:
 curl -X POST "$WAKEBRIDGE_URL/v1/chat/completions" \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"model":"meta-llama/Llama-3.2-1B","messages":[{"role":"user","content":"hello"}],"stream":false}'
+  -d '{"model":"Qwen/Qwen3-4B","messages":[{"role":"user","content":"hello"}],"stream":false}'
 ```
 
 Streaming, where supported:
@@ -95,7 +95,7 @@ Streaming, where supported:
 curl -N -X POST "$NODE_WAKEBRIDGE_URL/v1/chat/completions" \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"model":"meta-llama/Llama-3.2-1B","messages":[{"role":"user","content":"hello"}],"stream":true}'
+  -d '{"model":"Qwen/Qwen3-4B","messages":[{"role":"user","content":"hello"}],"stream":true}'
 ```
 
 ## Expected First Boot Behavior
@@ -119,5 +119,5 @@ This may take several minutes. Warm Pools and baked AMIs reduce repeated startup
 - ALB unhealthy: check target group port `8080`, security groups, and `/health`.
 - Lambda VPC streaming limitation: Function URL response streaming is unavailable for VPC-configured Lambda.
 - ASG set desired capacity denied: check `autoscaling:SetDesiredCapacity`.
-- Model too large: start with `llama32_1b` on `inf2.xlarge`.
+- Model too large: start with `qwen3_4b_inf2_4k` on `inf2.xlarge`.
 - Neuron device missing: verify instance type, AMI, drivers, and `/dev/neuron0`.

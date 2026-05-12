@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="${EMBERLANE_INF2_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
-MODEL_PROFILE="${MODEL_PROFILE:-llama32_1b}"
+MODEL_PROFILE="${MODEL_PROFILE:-qwen3_4b_inf2_4k}"
 export NEURON_COMPILED_ARTIFACTS="${NEURON_COMPILED_ARTIFACTS:-/opt/emberlane/neuron-cache}"
 mkdir -p "${NEURON_COMPILED_ARTIFACTS}"
 

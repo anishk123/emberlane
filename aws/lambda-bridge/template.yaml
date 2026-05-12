@@ -38,8 +38,8 @@ Resources:
       Runtime: python3.12
       Handler: app.handler
       CodeUri: .
-      Timeout: 60
-      MemorySize: 512
+      Timeout: 30
+      MemorySize: 128
       Environment:
         Variables:
           ASG_NAME: !Ref AsgName

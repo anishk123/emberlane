@@ -1,6 +1,6 @@
 [package]
 name = "emberlane"
-version = "0.3.0"
+version = "0.3.5"
 edition = "2021"
 description = "Open-source wake routing for AI agents, MCP tools, APIs, and cold runtimes."
 license = "MIT OR Apache-2.0"

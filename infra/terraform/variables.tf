@@ -59,9 +59,9 @@ variable "vpc_cidr" {
 }
 
 variable "public_subnet_cidrs" {
-  description = "CIDRs for generated public subnets."
+  description = "CIDRs for generated public subnets. Emberlane spreads these across multiple AZs so the ASG can launch in any of them."
   type        = list(string)
-  default     = ["10.42.1.0/24", "10.42.2.0/24"]
+  default     = ["10.42.1.0/24", "10.42.2.0/24", "10.42.3.0/24"]
 }
 
 variable "allowed_ingress_cidr_blocks" {
@@ -92,6 +92,12 @@ variable "instance_type" {
   description = "AWS instance type for the runtime ASG."
   type        = string
   default     = "g5.2xlarge"
+}
+
+variable "fallback_instance_types" {
+  description = "Compatible fallback instance types used only for Spot mixed-instance capacity. On-Demand modes keep the requested instance type."
+  type        = list(string)
+  default     = []
 }
 
 variable "ami_id" {
@@ -367,13 +373,13 @@ variable "lambda_runtime" {
 variable "lambda_timeout_secs" {
   description = "Lambda timeout in seconds."
   type        = number
-  default     = 60
+  default     = 30
 }
 
 variable "lambda_memory_mb" {
   description = "Lambda memory size."
   type        = number
-  default     = 512
+  default     = 128
 }
 
 variable "wake_mode" {

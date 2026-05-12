@@ -34,83 +34,100 @@ fn inf2_runtime_pack_files_exist_and_models_are_defined() {
     let models = read("aws/inf2-runtime/models.yaml");
     assert!(models.contains("llama32_1b"));
     assert!(models.contains("meta-llama/Llama-3.2-1B"));
-    assert!(models.contains("status: \"validated_target\""));
-    assert!(models.contains("qwen25_15b"));
-    assert!(models.contains("Qwen/Qwen2.5-1.5B-Instruct"));
-    assert!(models.contains("status: \"experimental\""));
-    assert!(models.contains("qwen3_4b"));
-    assert!(models.contains("Qwen/Qwen3-4B-Instruct-2507"));
-    assert!(models.contains("qwen3_8b_inf2_4k"));
+    assert!(models.contains("status: \"hidden\""));
+    assert!(models.contains("qwen3_4b_inf2_4k"));
+    assert!(models.contains("Qwen/Qwen3-4B"));
+    assert!(models.contains("qwen3_8b_inf2_32k"));
     assert!(models.contains("Qwen/Qwen3-8B"));
+    assert!(models.contains("qwen25_coder_7b_inf2_4k"));
+    assert!(models.contains("Qwen/Qwen2.5-Coder-7B-Instruct"));
+    assert!(models.contains("qwen25_7b_inf2_4k"));
+    assert!(models.contains("Qwen/Qwen2.5-7B-Instruct"));
+    assert!(models.contains("qwen25_14b_inf2_4k"));
+    assert!(models.contains("Qwen/Qwen2.5-14B-Instruct"));
+    assert!(models.contains("status: \"hidden\""));
 }
 
 #[test]
 fn render_env_outputs_llama_and_qwen_profiles() {
     let script = root().join("aws/inf2-runtime/scripts/render-env.py");
-    let llama = Command::new("python3")
+    let qwen4b = Command::new("python3")
         .arg(&script)
         .arg("--profile")
-        .arg("llama32_1b")
+        .arg("qwen3_4b_inf2_4k")
         .arg("--format")
         .arg("json")
         .output()
         .unwrap();
-    assert!(llama.status.success());
-    let text = String::from_utf8(llama.stdout).unwrap();
-    assert!(text.contains("\"MODEL_ID\": \"meta-llama/Llama-3.2-1B\""));
+    assert!(qwen4b.status.success());
+    let text = String::from_utf8(qwen4b.stdout).unwrap();
+    assert!(text.contains("\"MODEL_ID\": \"Qwen/Qwen3-4B\""));
     assert!(text.contains("\"TENSOR_PARALLEL_SIZE\": \"2\""));
     assert!(text.contains("\"STATUS\": \"validated_target\""));
 
     let qwen = Command::new("python3")
         .arg(&script)
         .arg("--profile")
-        .arg("qwen25_15b")
+        .arg("qwen3_4b_inf2_4k")
         .arg("--format")
         .arg("json")
         .output()
         .unwrap();
     assert!(qwen.status.success());
     let text = String::from_utf8(qwen.stdout).unwrap();
-    assert!(text.contains("Qwen/Qwen2.5-1.5B-Instruct"));
-    assert!(text.contains("\"STATUS\": \"experimental\""));
+    assert!(text.contains("Qwen/Qwen3-4B"));
+    assert!(text.contains("\"STATUS\": \"validated_target\""));
 
     let qwen3 = Command::new("python3")
         .arg(&script)
         .arg("--profile")
-        .arg("qwen3_4b")
+        .arg("qwen3_8b_inf2_32k")
         .arg("--format")
         .arg("json")
         .output()
         .unwrap();
     assert!(qwen3.status.success());
     let text = String::from_utf8(qwen3.stdout).unwrap();
-    assert!(text.contains("Qwen/Qwen3-4B-Instruct-2507"));
-    assert!(text.contains("\"INSTANCE_TYPE\": \"inf2.xlarge\""));
-    assert!(text.contains("\"STATUS\": \"experimental\""));
+    assert!(text.contains("Qwen/Qwen3-8B"));
+    assert!(text.contains("\"INSTANCE_TYPE\": \"inf2.8xlarge\""));
+    assert!(text.contains("\"MAX_MODEL_LEN\": \"32768\""));
+    assert!(text.contains("\"MAX_NUM_SEQS\": \"1\""));
+    assert!(text.contains("\"STATUS\": \"validated_target\""));
 
     let qwen3_8b = Command::new("python3")
         .arg(&script)
         .arg("--profile")
-        .arg("qwen3_8b_inf2_4k")
+        .arg("qwen25_14b_inf2_4k")
         .arg("--format")
         .arg("json")
         .output()
         .unwrap();
     assert!(qwen3_8b.status.success());
     let text = String::from_utf8(qwen3_8b.stdout).unwrap();
-    assert!(text.contains("Qwen/Qwen3-8B"));
-    assert!(text.contains("\"INSTANCE_TYPE\": \"inf2.xlarge\""));
+    assert!(text.contains("Qwen/Qwen2.5-14B-Instruct"));
+    assert!(text.contains("\"INSTANCE_TYPE\": \"inf2.8xlarge\""));
     assert!(text.contains("\"MAX_MODEL_LEN\": \"4096\""));
-    assert!(text.contains("\"MAX_NUM_SEQS\": \"8\""));
+    assert!(text.contains("\"MAX_NUM_SEQS\": \"2\""));
     assert!(text.contains("\"BLOCK_SIZE\": \"32\""));
-    assert!(text.contains("\"NUM_GPU_BLOCKS_OVERRIDE\": \"8\""));
+    assert!(text.contains("\"NUM_GPU_BLOCKS_OVERRIDE\": \"2\""));
+}
+
+#[test]
+fn bootstrap_installs_huggingface_hub_and_prefers_neuron_bin_paths() {
+    let bootstrap = read("aws/inf2-runtime/bootstrap.sh");
+    assert!(
+        bootstrap.contains("export PATH=\"/opt/aws/neuron/bin:/opt/aws/neuronx/bin:${PATH:-}\"")
+    );
+    assert!(bootstrap.contains("Installing huggingface_hub for model download support"));
+    assert!(bootstrap.contains("python3 -m pip install --quiet --upgrade --break-system-packages \"huggingface_hub>=0.23.0\""));
 }
 
 #[test]
 fn start_server_contains_required_vllm_neuron_flags() {
     let script = read("aws/inf2-runtime/start-server.sh");
     for needle in [
-        "vllm serve",
+        "vllm_args=(serve",
+        "cmd=(vllm \"${vllm_args[@]}\")",
         "--device neuron",
         "--tensor-parallel-size",
         "--block-size",
@@ -122,6 +139,10 @@ fn start_server_contains_required_vllm_neuron_flags() {
         "--port",
         "S3_NEURON_ARTIFACTS_URI",
         "SYNC_ARTIFACTS_BACK",
+        "host vllm not found; falling back to the Neuron Docker image",
+        "docker run --rm --name emberlane-vllm --entrypoint vllm",
+        "VLLM_USE_V1",
+        "VLLM_ATTENTION_BACKEND",
     ] {
         assert!(script.contains(needle), "missing {needle}");
     }
@@ -181,10 +202,10 @@ fn node_lambda_bridge_contains_auth_warming_and_streaming_logic() {
 #[test]
 fn docs_and_config_include_inf2_llama() {
     assert!(read("emberlane.example.toml").contains("id = \"inf2-llama\""));
-    assert!(read("docs/inf2-runtime.md").contains("meta-llama/Llama-3.2-1B"));
+    assert!(read("docs/inf2-runtime.md").contains("Qwen/Qwen3-4B"));
     assert!(read("docs/aws-end-to-end.md").contains("Lambda VPC streaming limitation"));
-    assert!(read("docs/inf2-runtime.md").contains("qwen3_4b"));
-    assert!(read("docs/inf2-runtime.md").contains("qwen3_8b_inf2_4k"));
+    assert!(read("docs/inf2-runtime.md").contains("qwen3_4b_inf2_4k"));
+    assert!(read("docs/inf2-runtime.md").contains("qwen3_8b_inf2_32k"));
 }
 
 #[allow(dead_code)]

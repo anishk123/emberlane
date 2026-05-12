@@ -2,27 +2,28 @@
 
 The Emberlane Inf2 Runtime Pack turns an AWS Inf2 EC2 instance into a wakeable OpenAI-compatible LLM runtime. It is designed to sit behind an ALB and be woken by Emberlane's `aws_asg` provider or Lambda WakeBridge.
 
-## Why Inf2/Neuron
+## Public Inf2 Targets
 
-Inf2 instances provide AWS Inferentia accelerators. They can be cost-effective for some steady or warm-pooled inference workloads, but they are not universally cheaper than NVIDIA G instances and they add operational complexity: driver/runtime versions, model support, compilation, cache management, and longer first-boot paths.
+The public Inf2 targets are centered on Qwen3:
+
+- `Qwen/Qwen3-4B` on `inf2.xlarge`
+- `Qwen/Qwen3-8B` on `inf2.8xlarge`, with `inf2.24xlarge` as the larger-memory fallback
+
+Legacy Qwen2.5 Inf2 compatibility profiles remain hidden and only appear with `--experimental` or `--show-hidden`.
+
+Neuron guidance matters here: the vLLM Neuron docs recommend serving Qwen-family checkpoints from a local path instead of the Hugging Face model ID when shard-on-load is involved, and the compiled profile needs a matching `num_gpu_blocks_override`. Emberlane's runtime pack and Inf2 profiles already wire that in.
+
+## Why Inf2
+
+Inf2 can be cost-effective for steady or warm-pooled inference workloads, but it still adds operational complexity:
+
+- model compatibility
+- Neuron runtime versions
+- graph compilation
+- cache management
+- longer first-boot paths
 
 Emberlane does not promise fixed wake times.
-
-## First Success Path
-
-The first documented target is:
-
-- Profile: `llama32_1b`
-- Model: `meta-llama/Llama-3.2-1B`
-- Runtime: `vllm-neuron`
-- Instance: `inf2.xlarge`
-- Port: `8000`
-- OpenAI base path: `/v1`
-- Health check: `/health`
-
-Qwen `qwen25_15b` uses `Qwen/Qwen2.5-1.5B-Instruct` and is marked experimental until validated on Inf2.
-`qwen3_4b` uses `Qwen/Qwen3-4B-Instruct-2507`, starts from `inf2.xlarge`, and is the first conservative Qwen3 Inf2 profile in Emberlane.
-`qwen3_8b_inf2_4k` uses `Qwen/Qwen3-8B`, starts from `inf2.xlarge`, and is the first Qwen3-8B Inf2 experiment in Emberlane. It serves a local checkpoint path with `max_model_len = 4096`, `max_num_seqs = 8`, `block_size = 32`, and `num_gpu_blocks_override = 8`.
 
 ## Build Image
 
@@ -52,11 +53,10 @@ For gated Hugging Face models, set:
 
 ```sh
 HF_TOKEN=...
-MODEL_PROFILE=llama32_1b
+MODEL_PROFILE=qwen3_4b_inf2_4k
 ```
 
-For Qwen3 Inf2 experiments, set `MODEL_PROFILE=qwen3_4b`.
-For the Qwen3-8B Inf2 experiment, set `MODEL_PROFILE=qwen3_8b_inf2_4k`.
+For the larger Inf2 profile, set `MODEL_PROFILE=qwen3_8b_inf2_32k`.
 
 `scripts/download-model.sh` uses `huggingface_hub.snapshot_download`. You can also pre-bake weights into an AMI.
 
@@ -71,7 +71,7 @@ NEURON_COMPILED_ARTIFACTS=/opt/emberlane/neuron-cache
 Optional S3 sync:
 
 ```sh
-S3_NEURON_ARTIFACTS_URI=s3://bucket/prefix/neuron-artifacts/llama32_1b/
+S3_NEURON_ARTIFACTS_URI=s3://bucket/prefix/neuron-artifacts/qwen3_4b_inf2_4k/
 SYNC_ARTIFACTS_BACK=true
 ```
 
@@ -107,43 +107,3 @@ ASG:
 Launch template/user data should install the runtime pack, write `/etc/emberlane/inf2.env`, and run `bootstrap.sh`.
 
 For a complete Terraform deployment that creates the ALB, launch template, ASG, Warm Pool, S3 artifact bucket, and Lambda WakeBridge, see [AWS Deploy From Zero](aws-deploy-from-zero.md).
-
-## Emberlane Config
-
-```toml
-[[runtimes]]
-id = "inf2-llama"
-name = "Inf2 Llama Runtime"
-provider = "aws_asg"
-enabled = true
-mode = "fast"
-base_url = "http://your-alb-dns-name"
-health_path = "/health"
-startup_timeout_secs = 300
-fast_wait_secs = 25
-slow_retry_after_secs = 5
-idle_ttl_secs = 300
-max_concurrency = 1
-
-[runtimes.config]
-region = "us-west-2"
-asg_name = "emberlane-inf2-llama-asg"
-desired_capacity_on_wake = 1
-desired_capacity_on_sleep = 0
-warm_pool_expected = true
-```
-
-## Lambda WakeBridge
-
-Use `aws/lambda-bridge` for buffered JSON requests. Use `aws/lambda-bridge-node` for response streaming where Lambda Function URL streaming is supported.
-
-Lambda Function URLs do not support response streaming when the Lambda is configured inside a VPC. For private ALBs, plan for buffered responses or a different gateway pattern.
-
-## Known Limitations
-
-- No fixed wake-time promise.
-- First boot may download weights and compile Neuron artifacts.
-- Model support depends on Neuron, transformers, and vLLM versions.
-- Qwen profile is experimental.
-- Qwen3 Inf2 profiles are experimental.
-- Streaming support depends on the gateway and AWS networking shape.

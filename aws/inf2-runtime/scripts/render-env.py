@@ -59,7 +59,7 @@ def profile_env(models, profile, model_id_override=None):
             model.get("num_gpu_blocks_override", model.get("max_num_seqs", 32))
         ),
         "DEVICE": model.get("device", "neuron"),
-        "STATUS": model.get("status", "experimental"),
+        "STATUS": model.get("status", "hidden"),
     }
 
 
@@ -71,7 +71,10 @@ def main():
     root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description="Render Emberlane Inf2 model profile env.")
     parser.add_argument("--models", default=str(root / "models.yaml"))
-    parser.add_argument("--profile", default=os.environ.get("MODEL_PROFILE", "llama32_1b"))
+    parser.add_argument(
+        "--profile",
+        default=os.environ.get("MODEL_PROFILE", "qwen3_4b_inf2_4k"),
+    )
     parser.add_argument("--model-id", default=os.environ.get("MODEL_ID"))
     parser.add_argument("--format", choices=["shell", "json"], default="shell")
     args = parser.parse_args()

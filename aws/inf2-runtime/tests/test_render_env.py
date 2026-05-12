@@ -10,27 +10,27 @@ SPEC.loader.exec_module(render_env)
 
 
 class RenderEnvTests(unittest.TestCase):
-    def test_llama_env(self):
+    def test_qwen3_4b_env(self):
         models = render_env.load_models(ROOT / "models.yaml")
-        env = render_env.profile_env(models, "llama32_1b")
-        self.assertEqual(env["MODEL_ID"], "meta-llama/Llama-3.2-1B")
+        env = render_env.profile_env(models, "qwen3_4b_inf2_4k")
+        self.assertEqual(env["MODEL_ID"], "Qwen/Qwen3-4B")
         self.assertEqual(env["DEVICE"], "neuron")
         self.assertEqual(env["STATUS"], "validated_target")
 
     def test_model_id_override(self):
         models = render_env.load_models(ROOT / "models.yaml")
-        env = render_env.profile_env(models, "llama32_1b", "custom/model")
+        env = render_env.profile_env(models, "qwen3_4b_inf2_4k", "custom/model")
         self.assertEqual(env["MODEL_ID"], "custom/model")
 
-    def test_qwen3_8b_inf2_env(self):
+    def test_qwen3_8b_inf2_32k_env(self):
         models = render_env.load_models(ROOT / "models.yaml")
-        env = render_env.profile_env(models, "qwen3_8b_inf2_4k")
+        env = render_env.profile_env(models, "qwen3_8b_inf2_32k")
         self.assertEqual(env["MODEL_ID"], "Qwen/Qwen3-8B")
-        self.assertEqual(env["INSTANCE_TYPE"], "inf2.xlarge")
-        self.assertEqual(env["MAX_MODEL_LEN"], "4096")
-        self.assertEqual(env["MAX_NUM_SEQS"], "8")
+        self.assertEqual(env["INSTANCE_TYPE"], "inf2.8xlarge")
+        self.assertEqual(env["MAX_MODEL_LEN"], "32768")
+        self.assertEqual(env["MAX_NUM_SEQS"], "1")
         self.assertEqual(env["BLOCK_SIZE"], "32")
-        self.assertEqual(env["NUM_GPU_BLOCKS_OVERRIDE"], "8")
+        self.assertEqual(env["NUM_GPU_BLOCKS_OVERRIDE"], "1")
 
 
 if __name__ == "__main__":

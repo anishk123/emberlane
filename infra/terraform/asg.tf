@@ -7,11 +7,45 @@ resource "aws_autoscaling_group" "runtime" {
   target_group_arns         = [aws_lb_target_group.runtime.arn]
   health_check_type         = "ELB"
   health_check_grace_period = 900
+  wait_for_capacity_timeout = "0"
   protect_from_scale_in     = false
+  force_delete              = true
+  force_delete_warm_pool    = true
 
-  launch_template {
-    id      = aws_launch_template.runtime.id
-    version = "$Latest"
+  dynamic "launch_template" {
+    for_each = var.use_spot_instances ? [] : [1]
+
+    content {
+      id      = aws_launch_template.runtime.id
+      version = "$Latest"
+    }
+  }
+
+  dynamic "mixed_instances_policy" {
+    for_each = var.use_spot_instances ? [1] : []
+
+    content {
+      instances_distribution {
+        on_demand_base_capacity                  = 0
+        on_demand_percentage_above_base_capacity = 0
+        spot_allocation_strategy                 = "capacity-optimized"
+      }
+
+      launch_template {
+        launch_template_specification {
+          launch_template_id = aws_launch_template.runtime.id
+          version            = "$Latest"
+        }
+
+        dynamic "override" {
+          for_each = local.spot_instance_type_overrides
+
+          content {
+            instance_type = override.value
+          }
+        }
+      }
+    }
   }
 
   dynamic "warm_pool" {
@@ -66,17 +100,51 @@ resource "aws_cloudwatch_metric_alarm" "scale_down" {
   count               = var.enable_idle_scale_down ? 1 : 0
   alarm_name          = "${local.name_prefix}-idle-scale-down"
   comparison_operator = "LessThanOrEqualToThreshold"
-  evaluation_periods  = "3"
-  metric_name         = "RequestCount"
-  namespace           = "AWS/ApplicationELB"
-  period              = "300"
-  statistic           = "Sum"
+  evaluation_periods  = "2"
+  datapoints_to_alarm = "2"
   threshold           = "0"
-  alarm_description   = "Scale down ASG when there are 0 requests for 15 minutes"
+  alarm_description   = "Scale down ASG after 10 minutes with 0 requests, but only after the target is healthy"
   alarm_actions       = [aws_autoscaling_policy.scale_down[0].arn]
-  treat_missing_data  = "breaching"
+  treat_missing_data  = "notBreaching"
 
-  dimensions = {
-    LoadBalancer = aws_lb.runtime.arn_suffix
+  metric_query {
+    id          = "idle"
+    expression  = "IF(FILL(healthy, 0) > 0, FILL(requests, 0), 1)"
+    label       = "Requests while target is healthy"
+    return_data = true
+  }
+
+  metric_query {
+    id          = "requests"
+    return_data = false
+
+    metric {
+      namespace   = "AWS/ApplicationELB"
+      metric_name = "RequestCount"
+      period      = 300
+      stat        = "Sum"
+
+      dimensions = {
+        LoadBalancer = aws_lb.runtime.arn_suffix
+        TargetGroup  = aws_lb_target_group.runtime.arn_suffix
+      }
+    }
+  }
+
+  metric_query {
+    id          = "healthy"
+    return_data = false
+
+    metric {
+      namespace   = "AWS/ApplicationELB"
+      metric_name = "HealthyHostCount"
+      period      = 300
+      stat        = "Average"
+
+      dimensions = {
+        LoadBalancer = aws_lb.runtime.arn_suffix
+        TargetGroup  = aws_lb_target_group.runtime.arn_suffix
+      }
+    }
   }
 }

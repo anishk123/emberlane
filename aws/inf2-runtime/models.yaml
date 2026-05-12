@@ -1,4 +1,19 @@
 models:
+  qwen3_4b_inf2_4k:
+    model_id: "Qwen/Qwen3-4B"
+    display_name: "Qwen 3 4B (Neuron 4K)"
+    runtime: "vllm-neuron"
+    instance_type: "inf2.xlarge"
+    port: 8000
+    openai_base_path: "/v1"
+    health_check: "/health"
+    tensor_parallel_size: 2
+    max_model_len: 4096
+    max_num_seqs: 4
+    block_size: 32
+    device: "neuron"
+    status: "validated_target"
+
   llama32_1b:
     model_id: "meta-llama/Llama-3.2-1B"
     display_name: "Llama 3.2 1B (Neuron)"
@@ -12,7 +27,68 @@ models:
     max_num_seqs: 32
     block_size: 16
     device: "neuron"
+    status: "hidden"
+
+  qwen25_coder_7b_inf2_4k:
+    model_id: "Qwen/Qwen2.5-Coder-7B-Instruct"
+    display_name: "Qwen 2.5 Coder 7B (Neuron)"
+    runtime: "vllm-neuron"
+    instance_type: "inf2.xlarge"
+    port: 8000
+    openai_base_path: "/v1"
+    health_check: "/health"
+    tensor_parallel_size: 2
+    max_model_len: 4096
+    max_num_seqs: 4
+    block_size: 32
+    device: "neuron"
+    status: "hidden"
+
+  qwen3_8b_inf2_32k:
+    model_id: "Qwen/Qwen3-8B"
+    display_name: "Qwen 3 8B (Neuron 32K)"
+    runtime: "vllm-neuron"
+    instance_type: "inf2.8xlarge"
+    port: 8000
+    openai_base_path: "/v1"
+    health_check: "/health"
+    tensor_parallel_size: 2
+    max_model_len: 32768
+    max_num_seqs: 1
+    block_size: 32
+    device: "neuron"
     status: "validated_target"
+
+  qwen25_7b_inf2_4k:
+    model_id: "Qwen/Qwen2.5-7B-Instruct"
+    display_name: "Qwen 2.5 7B (Neuron)"
+    runtime: "vllm-neuron"
+    instance_type: "inf2.xlarge"
+    port: 8000
+    openai_base_path: "/v1"
+    health_check: "/health"
+    tensor_parallel_size: 2
+    max_model_len: 4096
+    max_num_seqs: 4
+    block_size: 32
+    device: "neuron"
+    status: "hidden"
+
+  qwen25_14b_inf2_4k:
+    model_id: "Qwen/Qwen2.5-14B-Instruct"
+    display_name: "Qwen 2.5 14B (Neuron)"
+    runtime: "vllm-neuron"
+    instance_type: "inf2.8xlarge"
+    port: 8000
+    openai_base_path: "/v1"
+    health_check: "/health"
+    tensor_parallel_size: 2
+    max_model_len: 4096
+    max_num_seqs: 2
+    num_gpu_blocks_override: 2
+    block_size: 32
+    device: "neuron"
+    status: "hidden"
 
   qwen25_15b:
     model_id: "Qwen/Qwen2.5-1.5B-Instruct"
@@ -27,7 +103,7 @@ models:
     max_num_seqs: 16
     block_size: 16
     device: "neuron"
-    status: "experimental"
+    status: "hidden"
 
   qwen3_4b:
     model_id: "Qwen/Qwen3-4B-Instruct-2507"
@@ -42,7 +118,7 @@ models:
     max_num_seqs: 16
     block_size: 16
     device: "neuron"
-    status: "experimental"
+    status: "hidden"
 
   qwen3_8b_inf2_4k:
     model_id: "Qwen/Qwen3-8B"
@@ -58,4 +134,4 @@ models:
     num_gpu_blocks_override: 8
     block_size: 32
     device: "neuron"
-    status: "experimental"
+    status: "hidden"

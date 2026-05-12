@@ -7,6 +7,8 @@ exec > >(tee -a "${LOG}") 2>&1
 
 echo "Emberlane Inf2 bootstrap starting at $(date -Is)"
 
+export PATH="/opt/aws/neuron/bin:/opt/aws/neuronx/bin:${PATH:-}"
+
 if [[ ! -e /dev/neuron0 ]]; then
   echo "ERROR: /dev/neuron0 not found. Use an Inf2 instance with Neuron drivers/runtime installed." >&2
   exit 1
@@ -21,9 +23,18 @@ fi
 ROOT_DIR="${EMBERLANE_INF2_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 install -m 0644 "${ROOT_DIR}/systemd/emberlane-inf2.service" /etc/systemd/system/emberlane-inf2.service
 
+if ! python3 - <<'PY' >/dev/null 2>&1
+import importlib.util
+raise SystemExit(0 if importlib.util.find_spec("huggingface_hub") else 1)
+PY
+then
+  echo "Installing huggingface_hub for model download support"
+  python3 -m pip install --quiet --upgrade --break-system-packages "huggingface_hub>=0.23.0"
+fi
+
 if [[ ! -f /etc/emberlane/inf2.env ]]; then
   cat >/etc/emberlane/inf2.env <<'ENV'
-MODEL_PROFILE=llama32_1b
+MODEL_PROFILE=qwen3_4b_inf2_4k
 HF_HOME=/opt/emberlane/model-cache
 TRANSFORMERS_CACHE=/opt/emberlane/model-cache
 NEURON_COMPILED_ARTIFACTS=/opt/emberlane/neuron-cache

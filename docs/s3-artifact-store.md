@@ -75,7 +75,7 @@ You can upload multiple text documents at once and then ask a question about mor
 
 ```sh
 cargo run -- upload README.md docs/aws-deploy-from-zero.md
-cargo run -- chat-files qwen3_8b_awq_32k_g5 <file_id_1> <file_id_2> --message "compare these notes"
+cargo run -- chat-files qwen3_4b_inf2_4k <file_id_1> <file_id_2> --message "compare these notes"
 ```
 
 ## Presigned URL Flow

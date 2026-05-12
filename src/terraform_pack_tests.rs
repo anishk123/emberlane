@@ -53,6 +53,7 @@ fn variables_include_required_inputs() {
         "allowed_ingress_cidr_blocks",
         "public_alb",
         "instance_type",
+        "fallback_instance_types",
         "ami_id",
         "key_name",
         "model_profile",
@@ -101,6 +102,10 @@ fn variables_include_required_inputs() {
             "missing variable {name}"
         );
     }
+    assert!(variables.contains("variable \"lambda_timeout_secs\""));
+    assert!(variables.contains("default     = 30"));
+    assert!(variables.contains("variable \"lambda_memory_mb\""));
+    assert!(variables.contains("default     = 128"));
 }
 
 #[test]
@@ -112,15 +117,27 @@ fn terraform_resources_include_required_wakebridge_pieces() {
 
     let asg = read("infra/terraform/asg.tf");
     assert!(asg.contains("aws_autoscaling_group"));
+    assert!(asg.contains("mixed_instances_policy"));
+    assert!(asg.contains("capacity-optimized"));
     assert!(asg.contains("ignore_changes"));
     assert!(asg.contains("desired_capacity"));
+    assert!(asg.contains("wait_for_capacity_timeout = \"0\""));
+    assert!(asg.contains("force_delete              = true"));
+    assert!(asg.contains("force_delete_warm_pool    = true"));
+    assert!(asg.contains("HealthyHostCount"));
+    assert!(asg.contains("FILL(healthy, 0) > 0"));
+    assert!(asg.contains("treat_missing_data  = \"notBreaching\""));
+    assert!(asg.contains("evaluation_periods  = \"2\""));
+    assert!(asg.contains("datapoints_to_alarm = \"2\""));
+    assert!(asg.contains("after 10 minutes"));
 
     let locals = read("infra/terraform/locals.tf");
-    assert!(locals.contains("public_subnet_az_offset"));
+    assert!(locals.contains("public_subnet_ids"));
+    assert!(locals.contains("aws_availability_zones"));
     assert!(locals.contains("public_subnet_zone_names"));
 
     let vpc = read("infra/terraform/vpc.tf");
-    assert!(vpc.contains("local.public_subnet_zone_names"));
+    assert!(vpc.contains("availability_zone       = local.public_subnet_zone_names[count.index]"));
 
     let lambda = read("infra/terraform/lambda.tf");
     assert!(lambda.contains("aws_lambda_function_url"));
@@ -133,6 +150,9 @@ fn terraform_resources_include_required_wakebridge_pieces() {
     assert!(iam.contains("autoscaling:DescribeAutoScalingGroups"));
     assert!(iam.contains("autoscaling:DescribeWarmPool"));
 
+    let launch_template = read("infra/terraform/launch_template.tf");
+    assert!(launch_template.contains("instance_type = var.instance_type"));
+
     let user_data = read("infra/terraform/user_data.sh.tftpl");
     assert!(user_data.contains("MODEL_PROFILE"));
     assert!(user_data.contains("ARTIFACT_BUCKET"));
@@ -140,11 +160,36 @@ fn terraform_resources_include_required_wakebridge_pieces() {
     assert!(user_data.contains("MAX_MODEL_LEN"));
     assert!(user_data.contains("LANGUAGE_MODEL_ONLY"));
     assert!(user_data.contains("REASONING_PARSER"));
+    assert!(user_data.contains("IMDS_TOKEN="));
+    assert!(user_data.contains("metadata ami-id"));
+    assert!(user_data.contains("[[ ! -e /dev/neuron0 ]]"));
+    assert!(user_data.contains("WARNING: neuron-ls not found on host"));
+    assert!(user_data.contains("staging runtime pack from"));
+    assert!(user_data.contains("aws s3 cp \"${runtime_pack_s3_uri}\""));
+    assert!(user_data.contains("unzip -o \"$${TMP_RUNTIME_PACK}\" -d /opt/emberlane/inf2-runtime"));
     assert!(user_data.contains("HF_HOME=/opt/emberlane/model-cache"));
     assert!(user_data.contains("TRANSFORMERS_CACHE=/opt/emberlane/model-cache"));
     assert!(user_data.contains("safetensors prefetch"));
     assert!(user_data.contains("systemctl enable --now emberlane-runtime.service"));
     assert!(user_data.contains("docker run --rm --name emberlane-vllm"));
+    assert!(user_data.contains("\"--entrypoint\",\n    \"vllm\""));
+    assert!(user_data.contains("Emberlane startup error: /etc/emberlane/vllm-command is empty"));
+    assert!(user_data.contains("Emberlane startup error: invalid vLLM command"));
+    assert!(
+        !user_data.contains("\"${IMAGE}\""),
+        "runtime shell IMAGE variables must not be left as Terraform template variables"
+    );
+    assert!(
+        !user_data.contains("\n${CMD_ARGS}\n"),
+        "runtime shell CMD_ARGS heredocs must escape Terraform interpolation"
+    );
+    assert!(
+        !user_data.contains("\"${NEURON_DEVICES}\""),
+        "runtime shell NEURON_DEVICES variables must escape Terraform interpolation"
+    );
+    assert!(user_data.contains("$${CMD_ARGS}"));
+    assert!(user_data.contains("$${NEURON_DEVICES}"));
+    assert!(user_data.contains("cmd.extend(shlex.split(\"$${NEURON_DEVICES}\"))"));
 }
 
 #[test]

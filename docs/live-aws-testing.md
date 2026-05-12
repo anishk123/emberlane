@@ -78,15 +78,15 @@ Use `--keep-on-failure` only for debugging. Otherwise diagnostics are collected 
 
 ```sh
 cargo run -- test aws \
-  --models qwen3_8b_awq_32k_g5,qwen25_7b \
-  --accelerator cuda \
-  --instance g5.2xlarge \
+  --models qwen3_4b_inf2_4k,qwen3_8b_inf2_32k \
+  --accelerator inf2 \
+  --instance inf2.xlarge \
   --mode economy \
   --destroy \
   --yes-i-understand-this-creates-aws-resources
 ```
 
-The default CUDA path now starts from `qwen3_8b_awq_32k_g5` on `g5.2xlarge`.
+The default AWS path now starts from `qwen3_4b_inf2_4k` on `inf2.xlarge`.
 
 ## Matrix
 
@@ -94,7 +94,6 @@ The default CUDA path now starts from `qwen3_8b_awq_32k_g5` on `g5.2xlarge`.
 cargo run -- test aws-matrix \
   --config tests/aws-matrix.example.toml \
   --destroy \
-  --exclude-experimental \
   --yes-i-understand-this-creates-aws-resources
 ```
 

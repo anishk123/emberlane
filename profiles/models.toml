@@ -1,10 +1,85 @@
+# Emberlane model profiles
+#
+# Visible menu order is driven by `sort_order`.
+#
+# Economy = Spot + scale-to-zero
+# Balanced = On-Demand + ready-first
+#
+# NOTE:
+# If the CLI still shows profiles grouped by instance after this change,
+# update the CLI to sort by sort_order and hide visibility = "hidden".
+
+[models.qwen3_4b_inf2_4k]
+sort_order = 10
+display_name = "Qwen3 4B — Cheapest Simple Agent on Inf2"
+model_id = "Qwen/Qwen3-4B"
+default_accelerator = "inf2"
+recommended_instance = "inf2.xlarge"
+runtime = "vllm-neuron"
+status = "recommended"
+max_model_len = 4096
+safe_instance = "inf2.8xlarge"
+fallback_instances = ["inf2.8xlarge"]
+max_num_seqs = 4
+block_size = 32
+num_gpu_blocks_override = 4
+default_mode = "economy"
+default_pricing = "spot"
+balanced_pricing = "on_demand"
+serving_modality = "text"
+use_case = ["simple agent", "quick", "general", "budget"]
+task_group = "Qwen3 — cheapest simple agent"
+instance_group = "Inf2 cheapest"
+visibility = "recommended"
+validation_status = "needs_aws_validation"
+validated = false
+require_user_acknowledgement_if_unvalidated = false
+note = "Cheapest new-model profile to try first for simple agents. Context is too small for serious coding or research."
+vllm_extra_args = [
+  "--device", "neuron",
+  "--tensor-parallel-size", "2",
+  "--max-num-seqs", "4",
+  "--block-size", "32",
+  "--num-gpu-blocks-override", "4",
+  "--no-enable-prefix-caching",
+]
+
+[models.qwen3_8b_awq_32k_g5]
+sort_order = 12
+display_name = "Qwen3 8B AWQ — Cheapest Useful Coding 32K on G5"
+model_id = "Qwen/Qwen3-8B-AWQ"
+default_accelerator = "cuda"
+recommended_instance = "g5.2xlarge"
+runtime = "vllm-cuda"
+status = "recommended"
+quantization = "awq"
+max_model_len = 32768
+safe_instance = "g5.4xlarge"
+fallback_instances = ["g5.4xlarge", "g6e.xlarge"]
+default_mode = "economy"
+default_pricing = "spot"
+balanced_pricing = "on_demand"
+serving_modality = "text"
+use_case = ["simple coding", "budget", "coding", "general"]
+task_group = "Qwen3 — cheapest useful coding"
+instance_group = "G5 lowest-cost 32K"
+visibility = "recommended"
+validation_status = "needs_aws_validation"
+validated = false
+require_user_acknowledgement_if_unvalidated = false
+language_model_only = true
+reasoning_parser = "qwen3"
+gpu_memory_utilization = 0.90
+note = "Cheapest useful Aider/coding profile. Try this before larger G6e unless G5 Spot capacity or OOM becomes a problem."
+
 [models.qwen3_8b_awq_32k]
-display_name = "Qwen3 8B AWQ — 32K ctx"
+sort_order = 13
+display_name = "Qwen3 8B AWQ — Safer Coding / Research 32K on G6e"
 model_id = "Qwen/Qwen3-8B-AWQ"
 default_accelerator = "cuda"
 recommended_instance = "g6e.xlarge"
 runtime = "vllm-cuda"
-status = "hidden"
+status = "recommended"
 quantization = "awq"
 max_model_len = 32768
 lower_cost_instance = "g5.2xlarge"
@@ -14,18 +89,21 @@ default_mode = "economy"
 default_pricing = "spot"
 balanced_pricing = "on_demand"
 serving_modality = "text"
-use_case = ["coding", "research", "agentic", "general"]
-task_group = "Coding - Simple"
-instance_group = "G6e recommended"
-visibility = "hidden"
-validation_status = "needs_emberlane_validation"
+use_case = ["hard coding", "coding", "research", "simple agent", "general"]
+task_group = "Qwen3 — safer coding / research"
+instance_group = "G6e recommended 32K"
+visibility = "recommended"
+validation_status = "needs_aws_validation"
 validated = false
-require_user_acknowledgement_if_unvalidated = true
+require_user_acknowledgement_if_unvalidated = false
 language_model_only = true
 reasoning_parser = "qwen3"
+gpu_memory_utilization = 0.90
+note = "Best practical default if you want fewer OOM/capacity issues than G5 while keeping useful 32K context."
 
 [models.qwen3_8b_awq_128k]
-display_name = "Qwen3 8B AWQ — 128K ctx"
+sort_order = 14
+display_name = "Qwen3 8B AWQ — Deep Research / Complex Agent 128K on G6e"
 model_id = "Qwen/Qwen3-8B-AWQ"
 default_accelerator = "cuda"
 recommended_instance = "g6e.2xlarge"
@@ -40,18 +118,56 @@ default_mode = "economy"
 default_pricing = "spot"
 balanced_pricing = "on_demand"
 serving_modality = "text"
-use_case = ["deep_research", "large_context", "agentic"]
-task_group = "Research - Deep"
-instance_group = "G6e larger"
+use_case = ["hard agent", "deep research", "large context", "coding", "simple agent"]
+task_group = "Qwen3 — deep research / complex agent"
+instance_group = "G6e larger 128K"
 visibility = "advanced"
-validation_status = "needs_emberlane_validation"
+validation_status = "needs_aws_validation"
 validated = false
-require_user_acknowledgement_if_unvalidated = true
+require_user_acknowledgement_if_unvalidated = false
 language_model_only = true
 reasoning_parser = "qwen3"
+gpu_memory_utilization = 0.92
+note = "Use for large-context coding, complex agents, and deep research. If it fails, do not silently fall back to 32K."
+
+[models.qwen3_8b_inf2_32k]
+sort_order = 11
+display_name = "Qwen3 8B — Cheaper Inf2 32K"
+model_id = "Qwen/Qwen3-8B"
+default_accelerator = "inf2"
+recommended_instance = "inf2.8xlarge"
+runtime = "vllm-neuron"
+status = "advanced"
+max_model_len = 32768
+safe_instance = "inf2.24xlarge"
+fallback_instances = ["inf2.24xlarge"]
+max_num_seqs = 1
+block_size = 32
+num_gpu_blocks_override = 1
+default_mode = "economy"
+default_pricing = "spot"
+balanced_pricing = "on_demand"
+serving_modality = "text"
+use_case = ["inf2 validation", "hard agent", "deep research", "large context", "simple agent"]
+task_group = "Qwen3 — cheaper Inf2 32K test"
+instance_group = "Inf2 32GB HBM test"
+visibility = "advanced"
+validation_status = "needs_aws_validation"
+validated = false
+require_user_acknowledgement_if_unvalidated = false
+note = "Strategic Inf2 target. inf2.8xlarge has the same 32GB accelerator memory as inf2.xlarge, but more host CPU/RAM for compile/runtime comfort; use inf2.24xlarge if this 32K test fails."
+vllm_extra_args = [
+  "--device", "neuron",
+  "--tensor-parallel-size", "2",
+  "--max-num-seqs", "1",
+  "--block-size", "32",
+  "--num-gpu-blocks-override", "1",
+  "--no-enable-prefix-caching",
+]
 
 [models.gemma3_12b_128k]
-display_name = "Gemma 3 12B — 128K ctx"
+sort_order = 20
+display_name = "Gemma 3 12B — Multimodal Research 128K on G6e"
 model_id = "google/gemma-3-12b-it"
 default_accelerator = "cuda"
 recommended_instance = "g6e.2xlarge"
@@ -64,17 +180,18 @@ default_mode = "economy"
 default_pricing = "spot"
 balanced_pricing = "on_demand"
 serving_modality = "multimodal"
-use_case = ["general", "research"]
-task_group = "Research - General"
-instance_group = "G6e larger"
+use_case = ["research", "deep research", "multimodal", "general"]
+task_group = "Gemma3 — multimodal research"
+instance_group = "G6e larger 128K"
 visibility = "advanced"
-validation_status = "needs_emberlane_validation"
+validation_status = "needs_aws_validation"
 validated = false
-require_user_acknowledgement_if_unvalidated = true
-note = "May require Hugging Face access/license acceptance."
+require_user_acknowledgement_if_unvalidated = false
+note = "Use when research needs multimodal capability. May require Hugging Face access/license acceptance."
 
 [models.deepseek_r1_distill_qwen14b_64k]
-display_name = "DeepSeek R1 Distill Qwen 14B — 64K ctx"
+sort_order = 30
+display_name = "DeepSeek R1 Distill Qwen 14B — Reasoning 64K on G6e"
 model_id = "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B"
 default_accelerator = "cuda"
 recommended_instance = "g6e.2xlarge"
@@ -87,18 +204,186 @@ default_mode = "economy"
 default_pricing = "spot"
 balanced_pricing = "on_demand"
 serving_modality = "text"
-use_case = ["reasoning", "planning", "hard_agentic"]
-task_group = "Coding - Hard"
-instance_group = "G6e larger"
+use_case = ["reasoning", "planning", "hard agent"]
+task_group = "DeepSeek — reasoning"
+instance_group = "G6e larger 64K"
 visibility = "advanced"
-validation_status = "needs_emberlane_validation"
+validation_status = "needs_aws_validation"
 validated = false
-require_user_acknowledgement_if_unvalidated = true
-note = "Reasoning models may be slower and generate more tokens."
+require_user_acknowledgement_if_unvalidated = false
+note = "Use for reasoning/planning. It may be slower and more token-heavy than Qwen3 AWQ."
 
-[models.qwen3_8b_awq_32k_g5]
-display_name = "Qwen3 8B AWQ — 32K ctx"
-model_id = "Qwen/Qwen3-8B-AWQ"
+[models.deepseek_distill_qwen_7b]
+sort_order = 31
+display_name = "DeepSeek R1 Distill Qwen 7B — Older Reasoning 8K"
+model_id = "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B"
+default_accelerator = "cuda"
+recommended_instance = "g5.2xlarge"
+runtime = "vllm-cuda"
+status = "legacy_safe"
+max_model_len = 8192
+default_mode = "economy"
+default_pricing = "spot"
+balanced_pricing = "on_demand"
+serving_modality = "text"
+use_case = ["legacy safe", "reasoning"]
+task_group = "DeepSeek — cheaper older reasoning"
+instance_group = "CUDA legacy"
+visibility = "optional"
+validation_status = "legacy"
+validated = false
+require_user_acknowledgement_if_unvalidated = false
+note = "Older smaller reasoning model. Keep only if the 14B reasoning model is too expensive or fails."
+
+[models.qwen25_15b_inf2_tight_memory]
+sort_order = 80
+display_name = "Qwen2.5 1.5B Inf2 Tight Memory — Older Tiny Fallback"
+model_id = "Qwen/Qwen2.5-1.5B-Instruct"
+default_accelerator = "inf2"
+recommended_instance = "inf2.xlarge"
+runtime = "vllm-neuron"
+status = "legacy_safe"
+max_model_len = 1024
+default_mode = "economy"
+default_pricing = "spot"
+balanced_pricing = "on_demand"
+serving_modality = "text"
+use_case = ["legacy safe", "tiny"]
+task_group = "Older Qwen fallback"
+instance_group = "Inf2 legacy cheapest"
+visibility = "hidden"
+validation_status = "legacy"
+validated = false
+require_user_acknowledgement_if_unvalidated = false
+note = "Older tiny Qwen fallback only. Keep if newer Qwen3 profiles fail."
+
+[models.qwen25_7b_inf2_4k]
+sort_order = 81
+display_name = "Qwen2.5 7B — Older Safe General 4K on Inf2"
+model_id = "Qwen/Qwen2.5-7B-Instruct"
+default_accelerator = "inf2"
+recommended_instance = "inf2.xlarge"
+runtime = "vllm-neuron"
+status = "legacy_safe"
+max_model_len = 4096
+max_num_seqs = 4
+block_size = 32
+num_gpu_blocks_override = 4
+default_mode = "economy"
+default_pricing = "spot"
+balanced_pricing = "on_demand"
+serving_modality = "text"
+use_case = ["legacy safe", "quick", "general"]
+task_group = "Older Qwen fallback"
+instance_group = "Inf2 lower-cost 4K"
+visibility = "hidden"
+validation_status = "official_small_context"
+validated = true
+require_user_acknowledgement_if_unvalidated = false
+note = "Safe older Inf2 fallback for smoke tests. Not useful as the main coding/research model."
+vllm_extra_args = [
+  "--device", "neuron",
+  "--tensor-parallel-size", "2",
+  "--max-num-seqs", "4",
+  "--block-size", "32",
+  "--num-gpu-blocks-override", "4",
+  "--no-enable-prefix-caching",
+]
+
+[models.qwen25_coder_7b_inf2_4k]
+sort_order = 82
+display_name = "Qwen2.5 Coder 7B — Older Safe Coding 4K on Inf2"
+model_id = "Qwen/Qwen2.5-Coder-7B-Instruct"
+default_accelerator = "inf2"
+recommended_instance = "inf2.xlarge"
+runtime = "vllm-neuron"
+status = "legacy_safe"
+max_model_len = 4096
+max_num_seqs = 4
+block_size = 32
+num_gpu_blocks_override = 4
+default_mode = "economy"
+default_pricing = "spot"
+balanced_pricing = "on_demand"
+serving_modality = "text"
+use_case = ["legacy safe", "quick", "simple coding"]
+task_group = "Older Qwen fallback"
+instance_group = "Inf2 lower-cost 4K"
+visibility = "hidden"
+validation_status = "official_supported_small_context"
+validated = true
+require_user_acknowledgement_if_unvalidated = false
+note = "Older coding-specific fallback. Use only if newer profiles fail. Context is too small for real repo coding."
+vllm_extra_args = [
+  "--device", "neuron",
+  "--tensor-parallel-size", "2",
+  "--max-num-seqs", "4",
+  "--block-size", "32",
+  "--num-gpu-blocks-override", "4",
+  "--no-enable-prefix-caching",
+]
+
+[models.qwen25_14b_inf2_4k]
+sort_order = 83
+display_name = "Qwen2.5 14B — Older Larger 4K on Inf2"
+model_id = "Qwen/Qwen2.5-14B-Instruct"
+default_accelerator = "inf2"
+recommended_instance = "inf2.8xlarge"
+runtime = "vllm-neuron"
+status = "legacy_safe"
+max_model_len = 4096
+safe_instance = "inf2.24xlarge"
+fallback_instances = ["inf2.24xlarge"]
+max_num_seqs = 2
+block_size = 32
+num_gpu_blocks_override = 2
+default_mode = "economy"
+default_pricing = "spot"
+balanced_pricing = "on_demand"
+serving_modality = "text"
+use_case = ["legacy safe", "hard agent", "research"]
+task_group = "Older Qwen fallback"
+instance_group = "Inf2 larger 4K"
+visibility = "hidden"
+validation_status = "official_supported_small_context"
+validated = true
+require_user_acknowledgement_if_unvalidated = false
+note = "Older larger Inf2 fallback. More expensive but still only 4K context."
+vllm_extra_args = [
+  "--device", "neuron",
+  "--tensor-parallel-size", "2",
+  "--max-num-seqs", "2",
+  "--block-size", "32",
+  "--num-gpu-blocks-override", "2",
+  "--no-enable-prefix-caching",
+]
+
+[models.qwen25_15b_inf2]
+sort_order = 84
+display_name = "Qwen2.5 1.5B Inf2 — Older Tiny Fallback"
+model_id = "Qwen/Qwen2.5-1.5B-Instruct"
+default_accelerator = "inf2"
+recommended_instance = "inf2.8xlarge"
+runtime = "vllm-neuron"
+status = "legacy_safe"
+max_model_len = 4096
+default_mode = "economy"
+default_pricing = "spot"
+balanced_pricing = "on_demand"
+serving_modality = "text"
+use_case = ["legacy safe", "tiny"]
+task_group = "Older Qwen fallback"
+instance_group = "Inf2 legacy"
+visibility = "hidden"
+validation_status = "legacy"
+validated = false
+require_user_acknowledgement_if_unvalidated = false
+note = "Older tiny Qwen fallback only. Keep if newer Qwen3 profiles fail."
+
+[models.qwen35_2b]
+sort_order = 5
+display_name = "Qwen3.5 2B AWQ — 32K Cheapest Simple Agent / Coding on G5"
+model_id = "cyankiwi/Qwen3.5-2B-AWQ-4bit"
 default_accelerator = "cuda"
 recommended_instance = "g5.2xlarge"
 runtime = "vllm-cuda"
@@ -106,177 +391,145 @@ status = "recommended"
 quantization = "awq"
 max_model_len = 32768
 safe_instance = "g5.4xlarge"
+fallback_instances = ["g5.4xlarge", "g6e.xlarge"]
 default_mode = "economy"
 default_pricing = "spot"
 balanced_pricing = "on_demand"
-serving_modality = "text"
-use_case = ["quick", "budget", "coding", "general"]
-task_group = "Coding - Simple"
-instance_group = "G5 budget"
+serving_modality = "multimodal"
+use_case = ["single_agent", "simple_coding", "simple_agent", "coding", "general", "multimodal"]
+task_group = "Qwen3.5 — simple coding / simple agent"
+instance_group = "G5 cheapest 32K"
 visibility = "recommended"
-validation_status = "needs_emberlane_validation"
-validated = false
-require_user_acknowledgement_if_unvalidated = true
-language_model_only = true
-reasoning_parser = "qwen3"
-
-[models.qwen3_8b_inf2_4k]
-display_name = "Qwen3 8B — Inf2 4K ctx"
-model_id = "Qwen/Qwen3-8B"
-default_accelerator = "inf2"
-recommended_instance = "inf2.xlarge"
-runtime = "vllm-neuron"
-status = "optional"
-max_model_len = 4096
-safe_instance = "inf2.8xlarge"
-fallback_instances = ["inf2.8xlarge"]
-max_num_seqs = 8
-block_size = 32
-num_gpu_blocks_override = 8
-default_mode = "economy"
-default_pricing = "spot"
-balanced_pricing = "on_demand"
-serving_modality = "text"
-use_case = ["coding", "research", "agentic", "general"]
-task_group = "Coding - Simple"
-instance_group = "Inf2 lower-cost"
-visibility = "optional"
-validation_status = "experimental"
+validation_status = "needs_aws_validation"
 validated = false
 require_user_acknowledgement_if_unvalidated = false
-note = "Uses a local Neuron checkpoint with 4K context; 32K/64K Inf2 has not been validated."
-vllm_extra_args = [
-    "--device",
-    "neuron",
-    "--tensor-parallel-size",
-    "2",
-    "--max-num-seqs",
-    "8",
-    "--block-size",
-    "32",
-    "--num-gpu-blocks-override",
-    "8",
-    "--no-enable-prefix-caching",
-]
-
-[models.qwen35_9b]
-display_name = "Qwen 3.5 9B"
-model_id = "Qwen/Qwen3.5-9B"
-default_accelerator = "cuda"
-recommended_instance = "g5.2xlarge"
-runtime = "vllm-cuda"
-status = "experimental"
 language_model_only = true
 reasoning_parser = "qwen3"
-fallback_instances = ["g5.4xlarge", "g5.8xlarge"]
-max_model_len = 1024
-visibility = "hidden"
-validation_status = "experimental"
-validated = false
+gpu_memory_utilization = 0.88
+note = "Newest cheap public Qwen3.5 starter. Uses the AWQ 4-bit repo, stays multimodal-capable, and Emberlane serves it text-only to keep memory down."
+
+[models.qwen35_9b]
+sort_order = 6
+display_name = "Qwen3.5 9B AWQ — 32K Hard Coding / Deep Research on G6e"
+model_id = "QuantTrio/Qwen3.5-9B-AWQ"
+default_accelerator = "cuda"
+recommended_instance = "g6e.2xlarge"
+runtime = "vllm-cuda"
+status = "advanced"
+quantization = "awq"
+language_model_only = true
+reasoning_parser = "qwen3"
+fallback_instances = ["g6e.4xlarge"]
+max_model_len = 32768
+safe_instance = "g6e.4xlarge"
+default_mode = "economy"
+default_pricing = "spot"
+balanced_pricing = "on_demand"
 serving_modality = "multimodal"
+use_case = [
+  "hard_coding",
+  "hard_agent",
+  "reasoning",
+  "deep_research",
+  "research",
+  "coding",
+  "multimodal",
+]
+task_group = "Qwen3.5 — hard coding / deep research"
+instance_group = "G6e stronger 32K"
+visibility = "advanced"
+validation_status = "needs_aws_validation"
+validated = false
+require_user_acknowledgement_if_unvalidated = false
+gpu_memory_utilization = 0.90
+note = "Uses the AWQ repo. Multimodal-capable, but Emberlane serves it text-only so the runtime stays practical."
 
 [models.qwen35_9b_quantized]
-display_name = "Qwen 3.5 9B (Quantized Experimental)"
+sort_order = 7
+display_name = "Qwen3.5 9B Quantized — Hidden Tiny-Context Experiment"
 model_id = "inference-optimization/Qwen3.5-9B-quantized.w4a16"
 default_accelerator = "cuda"
 recommended_instance = "g5.2xlarge"
 runtime = "vllm-cuda"
-status = "experimental"
+status = "hidden"
 language_model_only = true
 reasoning_parser = "qwen3"
 max_model_len = 2048
-visibility = "hidden"
-validation_status = "experimental"
-validated = false
+default_mode = "economy"
+default_pricing = "spot"
+balanced_pricing = "on_demand"
 serving_modality = "multimodal"
-
-[models.qwen3_4b_inf2]
-display_name = "Qwen 3 4B (Inf2 Experimental)"
-model_id = "Qwen/Qwen3-4B-Instruct-2507"
-default_accelerator = "inf2"
-recommended_instance = "inf2.xlarge"
-runtime = "vllm-neuron"
-status = "inf2_experimental"
-max_model_len = 2048
+use_case = ["hidden", "experimental", "qwen35", "quantized"]
+task_group = "Hidden experiments"
+instance_group = "CUDA experimental"
 visibility = "hidden"
-validation_status = "experimental"
+validation_status = "manual_testing_only"
 validated = false
-serving_modality = "text"
-
-[models.deepseek_distill_qwen_7b]
-display_name = "DeepSeek R1 Distill Qwen 7B"
-model_id = "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B"
-default_accelerator = "cuda"
-recommended_instance = "g5.2xlarge"
-runtime = "vllm-cuda"
-status = "experimental"
-max_model_len = 8192
-visibility = "hidden"
-validation_status = "experimental"
-validated = false
-serving_modality = "text"
+require_user_acknowledgement_if_unvalidated = false
+note = "Hidden because this config is still too small-context to be useful."
 
 [models.llama31_8b]
-display_name = "Llama 3.1 8B Instruct"
+sort_order = 97
+display_name = "Llama 3.1 8B — Hidden Legacy"
 model_id = "meta-llama/Llama-3.1-8B-Instruct"
 default_accelerator = "cuda"
 recommended_instance = "g5.2xlarge"
 runtime = "vllm-cuda"
 status = "hidden"
 max_model_len = 8192
-visibility = "hidden"
-validation_status = "experimental"
-validated = false
+default_mode = "economy"
+default_pricing = "spot"
+balanced_pricing = "on_demand"
 serving_modality = "text"
+use_case = ["hidden", "legacy"]
+task_group = "Hidden Llama legacy"
+instance_group = "CUDA legacy"
+visibility = "hidden"
+validation_status = "legacy"
+validated = false
+require_user_acknowledgement_if_unvalidated = false
+note = "Hidden because Qwen3, Gemma3, and DeepSeek are preferred."
 
 [models.llama32_1b_inf2]
-display_name = "Llama 3.2 1B (Stable Inf2)"
+sort_order = 98
+display_name = "Llama 3.2 1B Inf2 — Hidden Legacy"
 model_id = "meta-llama/Llama-3.2-1B"
 default_accelerator = "inf2"
 recommended_instance = "inf2.8xlarge"
 runtime = "vllm-neuron"
 status = "hidden"
 max_model_len = 4096
-visibility = "hidden"
-validation_status = "experimental"
-validated = false
+default_mode = "economy"
+default_pricing = "spot"
+balanced_pricing = "on_demand"
 serving_modality = "text"
+use_case = ["hidden", "legacy", "tiny"]
+task_group = "Hidden Llama legacy"
+instance_group = "Inf2 legacy"
+visibility = "hidden"
+validation_status = "legacy"
+validated = false
+require_user_acknowledgement_if_unvalidated = false
+note = "Hidden because Qwen3 is preferred."
 
 [models.llama32_1b_inf2_tight_memory]
-display_name = "Llama 3.2 1B (Inf2 Tight Memory)"
+sort_order = 99
+display_name = "Llama 3.2 1B Inf2 Tight Memory — Hidden Legacy"
 model_id = "meta-llama/Llama-3.2-1B"
 default_accelerator = "inf2"
 recommended_instance = "inf2.xlarge"
 runtime = "vllm-neuron"
 status = "hidden"
 max_model_len = 1024
-visibility = "hidden"
-validation_status = "experimental"
-validated = false
+default_mode = "economy"
+default_pricing = "spot"
+balanced_pricing = "on_demand"
 serving_modality = "text"
-
-[models.qwen25_15b_inf2]
-display_name = "Qwen 2.5 1.5B (Stable Inf2)"
-model_id = "Qwen/Qwen2.5-1.5B-Instruct"
-default_accelerator = "inf2"
-recommended_instance = "inf2.8xlarge"
-runtime = "vllm-neuron"
-status = "hidden"
-max_model_len = 4096
+use_case = ["hidden", "legacy", "tiny"]
+task_group = "Hidden Llama legacy"
+instance_group = "Inf2 legacy"
 visibility = "hidden"
-validation_status = "experimental"
+validation_status = "legacy"
 validated = false
-serving_modality = "text"
-
-[models.qwen25_15b_inf2_tight_memory]
-display_name = "Qwen 2.5 1.5B (Inf2 Tight Memory)"
-model_id = "Qwen/Qwen2.5-1.5B-Instruct"
-default_accelerator = "inf2"
-recommended_instance = "inf2.xlarge"
-runtime = "vllm-neuron"
-status = "hidden"
-max_model_len = 1024
-visibility = "hidden"
-validation_status = "experimental"
-validated = false
-serving_modality = "text"
+require_user_acknowledgement_if_unvalidated = false
+note = "Hidden because Qwen3 is preferred."

@@ -1015,8 +1015,8 @@ async fn run_aws_command(
                 let mode_selection = dialoguer::Select::new()
                     .with_prompt("Choose cost mode")
                     .items([
-                        "economy / spot (cheapest, scale-to-zero)",
                         "balanced / on-demand (ready-first, scales down after idle)",
+                        "economy / spot (cheapest, scale-to-zero)",
                         "always-on / on-demand (never scales down)",
                     ])
                     .default(0)
@@ -1024,8 +1024,8 @@ async fn run_aws_command(
                     .map_err(|e| EmberlaneError::Internal(e.to_string()))?;
                 mode = Some(
                     match mode_selection {
-                        0 => CostMode::Economy,
-                        1 => CostMode::Balanced,
+                        0 => CostMode::Balanced,
+                        1 => CostMode::Economy,
                         _ => CostMode::AlwaysOn,
                     }
                     .to_string(),

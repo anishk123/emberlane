@@ -18,6 +18,8 @@ pub struct ModelProfile {
     pub runtime: String,
     pub status: String,
     #[serde(default)]
+    pub sort_order: u32,
+    #[serde(default)]
     pub quantization: Option<String>,
     #[serde(default)]
     pub lower_cost_instance: Option<String>,
@@ -102,24 +104,15 @@ fn profile_visibility(profile: &ModelProfile) -> &str {
     profile.visibility.as_deref().unwrap_or("hidden")
 }
 
-fn task_group_rank(task_group: &str) -> u8 {
-    match task_group {
-        "Coding - Simple" => 0,
-        "Recommended — Coding / Simple Agents / Research" => 0,
-        "Recommended — Simple Agents / Coding / Research" => 0,
-        "Recommended — Budget / Coding / Research" => 0,
-        "Coding - Hard" => 1,
-        "Hard Agentic / Reasoning" => 1,
-        "Reasoning / Hard Agentic" => 1,
-        "Research - Deep" => 2,
-        "Deep Research / Large Context" => 2,
-        "Deep Research / Long Context" => 2,
-        "Research - General" => 3,
-        "General / Research Alternative" => 3,
-        "General Research / Multimodal" => 3,
-        "Multimodal" => 4,
-        "Hidden / Legacy" => 5,
-        _ => 5,
+fn clean_task_group_label(task_group: &str) -> String {
+    let trimmed = task_group.trim();
+    let mut parts = trimmed.splitn(2, char::is_whitespace);
+    let first = parts.next().unwrap_or("");
+    let rest = parts.next().unwrap_or(trimmed);
+    if first.chars().all(|ch| ch.is_ascii_digit()) {
+        rest.trim().to_string()
+    } else {
+        trimmed.to_string()
     }
 }
 
@@ -128,88 +121,92 @@ fn display_validation_status(profile: &ModelProfile) -> String {
         profile
             .validation_status
             .clone()
-            .unwrap_or_else(|| "experimental".to_string())
+            .unwrap_or_else(|| "hidden".to_string())
     } else {
         "ready".to_string()
     }
 }
 
-
-
-fn task_fit_label(profile: &ModelProfile) -> String {
-    let task_group = profile.task_group.as_deref().unwrap_or("Hidden / Legacy");
-    if task_group.contains("Simple")
-        || profile
-            .use_case
-            .iter()
-            .any(|v| v == "quick" || v == "budget" || v == "coding")
-    {
-        "coding-simple".to_string()
-    } else if task_group.contains("Hard")
-        || profile
-            .use_case
-            .iter()
-            .any(|v| v == "hard_agentic" || v == "reasoning")
-    {
-        "coding-hard".to_string()
-    } else if task_group.contains("Deep")
-        || profile
-            .use_case
-            .iter()
-            .any(|v| v == "deep_research" || v == "large_context")
-    {
-        "research-deep".to_string()
-    } else if task_group.contains("General")
-        || profile
-            .use_case
-            .iter()
-            .any(|v| v == "general" || v == "research")
-    {
-        "research-general".to_string()
-    } else {
-        "coding-simple".to_string()
-    }
-}
-
 fn kind_label(profile: &ModelProfile) -> &str {
-    match profile.serving_modality.as_deref().unwrap_or("text") {
-        "multimodal" => "multimodal",
-        _ => "text",
+    if profile.language_model_only {
+        "text"
+    } else {
+        match profile.serving_modality.as_deref().unwrap_or("text") {
+            "multimodal" => "multimodal",
+            _ => "text",
+        }
     }
 }
 
-pub fn menu_sort_key(name: &str, profile: &ModelProfile) -> (u8, String, String) {
-    (
-        task_group_rank(profile.task_group.as_deref().unwrap_or("Hidden / Legacy")),
-        profile
-            .instance_group
-            .clone()
-            .unwrap_or_else(|| profile.recommended_instance.clone()),
-        name.to_string(),
-    )
+fn task_label(raw: &str) -> String {
+    match raw {
+        "coding" => "coding".to_string(),
+        "research" => "research".to_string(),
+        "deep_research" => "deep research".to_string(),
+        "agentic" => "simple agent".to_string(),
+        "hard_agentic" => "hard agent".to_string(),
+        "hard_coding" => "hard coding".to_string(),
+        "complex_agent" => "hard agent".to_string(),
+        "complex_coding" => "hard coding".to_string(),
+        "simple_agent" => "simple agent".to_string(),
+        "single_agent" => "single agent".to_string(),
+        "simple_coding" => "simple coding".to_string(),
+        "general" => "general".to_string(),
+        "quick" => "quick".to_string(),
+        "budget" => "budget".to_string(),
+        "large_context" => "large context".to_string(),
+        "reasoning" => "reasoning".to_string(),
+        "planning" => "planning".to_string(),
+        "multimodal" => "multimodal".to_string(),
+        other => other.replace('_', " "),
+    }
+}
+
+fn task_labels(profile: &ModelProfile) -> Vec<String> {
+    let mut labels = Vec::new();
+    for label in profile.use_case.iter().map(|task| task_label(task)) {
+        if !labels.contains(&label) {
+            labels.push(label);
+        }
+    }
+    if labels.is_empty() && profile.serving_modality.as_deref() == Some("multimodal") {
+        labels.push("multimodal".to_string());
+    }
+    labels
+}
+
+fn task_summary(profile: &ModelProfile) -> String {
+    let mut labels = task_labels(profile);
+    if profile.serving_modality.as_deref() == Some("multimodal")
+        && !labels.iter().any(|label| label == "multimodal")
+    {
+        labels.push("multimodal".to_string());
+    }
+    labels.join(", ")
+}
+
+pub fn menu_sort_key(name: &str, profile: &ModelProfile) -> (u32, String) {
+    (profile.sort_order, name.to_string())
 }
 
 pub fn deploy_prompt_label(name: &str, profile: &ModelProfile) -> String {
     let quant = profile.quantization.as_deref().unwrap_or("");
-    let task_fit = task_fit_label(profile);
-    let kind = kind_label(profile);
+    let mut tags = task_labels(profile);
+    let kind = kind_label(profile).to_string();
 
-    let mut tags = vec![task_fit];
-    if profile.use_case.iter().any(|u| u == "reasoning") {
-        tags.push("reasoning".to_string());
+    if !(kind == "multimodal" && tags.iter().any(|tag| tag == "multimodal"))
+        && !tags.contains(&kind)
+    {
+        tags.push(kind);
     }
-    tags.push(profile.recommended_instance.clone());
-    tags.push(kind.to_string());
-    if !quant.is_empty() {
+    if !tags.contains(&profile.recommended_instance) {
+        tags.push(profile.recommended_instance.clone());
+    }
+    if !quant.is_empty() && !tags.contains(&quant.to_string()) {
         tags.push(quant.to_string());
     }
 
-    format!(
-        "{} — {} [{}]",
-        name,
-        profile.display_name,
-        tags.join(", ")
-    )
+    format!("{} — {} [{}]", name, profile.display_name, tags.join(", "))
 }
 
 #[allow(dead_code)]
@@ -231,10 +228,14 @@ pub fn rows() -> Result<Vec<serde_json::Value>, EmberlaneError> {
                 .clone()
                 .unwrap_or_else(|| "needs_emberlane_validation".to_string());
             let visibility = profile_visibility(&p).to_string();
+            let task_group = clean_task_group_label(
+                p.task_group.as_deref().unwrap_or("Hidden / Legacy"),
+            );
             serde_json::json!({
                 "profile": name,
                 "display_name": p.display_name,
-                "task_group": p.task_group.unwrap_or_default(),
+                "task_group": task_group,
+                "best_for": task_summary(&p),
                 "instance_group": p.instance_group.unwrap_or_default(),
                 "serving_modality": p.serving_modality.clone().unwrap_or_else(|| "text".to_string()),
                 "accelerator": p.default_accelerator,
@@ -267,17 +268,21 @@ pub fn menu_sections(show_hidden: bool) -> Result<Vec<serde_json::Value>, Emberl
         if !show_hidden && !profile_is_visible(&profile) {
             continue;
         }
-        let group = profile
-            .task_group
-            .clone()
-            .unwrap_or_else(|| "Hidden / Legacy".to_string());
+        let group =
+            clean_task_group_label(profile.task_group.as_deref().unwrap_or("Hidden / Legacy"));
         groups.entry(group).or_default().push((name, profile));
     }
 
     let mut sections = groups
         .into_iter()
         .collect::<Vec<(String, Vec<(String, ModelProfile)>)>>();
-    sections.sort_by_key(|(task_group, _)| task_group_rank(task_group));
+    sections.sort_by_key(|(_, items)| {
+        items
+            .iter()
+            .map(|(_, profile)| profile.sort_order)
+            .min()
+            .unwrap_or(u32::MAX)
+    });
 
     let mut ordered_sections = Vec::new();
     for (task_group, mut items) in sections {
@@ -321,14 +326,18 @@ pub fn menu_sections(show_hidden: bool) -> Result<Vec<serde_json::Value>, Emberl
 pub fn model_selection_rows(show_hidden: bool) -> Result<Vec<serde_json::Value>, EmberlaneError> {
     Ok(all_profiles()?
         .into_iter()
-        .filter(|(_, p)| show_hidden || profile_is_visible(p))
+            .filter(|(_, p)| show_hidden || profile_is_visible(p))
         .map(|(name, p)| {
             let visibility = profile_visibility(&p).to_string();
             let validation_status = display_validation_status(&p);
+            let task_group = clean_task_group_label(
+                p.task_group.as_deref().unwrap_or("Hidden / Legacy"),
+            );
             serde_json::json!({
                 "profile": name,
                 "display_name": p.display_name,
-                "task_group": p.task_group.unwrap_or_default(),
+                "task_group": task_group,
+                "best_for": task_summary(&p),
                 "instance_group": p.instance_group.clone().unwrap_or_default(),
                 "serving_modality": p.serving_modality.clone().unwrap_or_else(|| "text".to_string()),
                 "accelerator": p.default_accelerator,

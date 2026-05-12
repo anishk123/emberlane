@@ -26,8 +26,8 @@ Resources:
       Runtime: nodejs20.x
       Handler: index.handler
       CodeUri: .
-      Timeout: 900
-      MemorySize: 512
+      Timeout: 30
+      MemorySize: 128
       Environment:
         Variables:
           ASG_NAME: !Ref AsgName

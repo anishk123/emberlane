@@ -12,6 +12,11 @@ resource "terraform_data" "input_validation" {
     }
 
     precondition {
+      condition     = !var.create_vpc || length(var.public_subnet_cidrs) <= length(data.aws_availability_zones.available.names)
+      error_message = "Not enough available AZs for the requested public_subnet_cidrs. Reduce the subnet count or choose a region with more available AZs."
+    }
+
+    precondition {
       condition     = var.ami_id != ""
       error_message = "ami_id is required. Use an AWS Neuron Deep Learning AMI or a baked Emberlane Inf2 AMI."
     }
