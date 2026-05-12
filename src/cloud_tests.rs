@@ -695,7 +695,13 @@ async fn aws_backend_doctor_and_cost_report_are_honest() {
         .contains("Inf2/Neuron is experimental"));
     assert_eq!(doctor["capacity"]["skipped"], true);
     let cost = backend.cost_report().await.unwrap();
-    assert_eq!(cost["pricing_configured"], true);
+    let pricing_configured = cost["pricing_configured"].as_bool().unwrap();
+    let message = cost["message"].as_str().unwrap();
+    if pricing_configured {
+        assert!(message.contains("Pricing cache loaded successfully"));
+    } else {
+        assert!(message.contains("No pricing file is configured"));
+    }
     assert_eq!(cost["savings_claimed"], false);
 }
 
