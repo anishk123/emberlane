@@ -194,8 +194,7 @@ pub fn deploy_prompt_label(name: &str, profile: &ModelProfile) -> String {
     let mut tags = task_labels(profile);
     let kind = kind_label(profile).to_string();
 
-    if !(kind == "multimodal" && tags.iter().any(|tag| tag == "multimodal"))
-        && !tags.contains(&kind)
+    if !(tags.contains(&kind) || kind == "multimodal" && tags.iter().any(|tag| tag == "multimodal"))
     {
         tags.push(kind);
     }
