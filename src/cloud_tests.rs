@@ -199,6 +199,8 @@ fn model_profiles_parse_and_include_new_public_profiles() {
     assert_eq!(qwen3_4b.status, "recommended");
     assert_eq!(qwen3_4b.model_id, "Qwen/Qwen3-4B");
     assert_eq!(qwen3_4b.max_model_len, 4096);
+    assert_eq!(qwen3_4b.max_num_seqs, Some(1));
+    assert_eq!(qwen3_4b.num_gpu_blocks_override, Some(1));
     assert_eq!(
         qwen3_4b.task_group.as_deref(),
         Some("Qwen3 — cheapest simple agent")
