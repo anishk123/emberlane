@@ -2,6 +2,12 @@
 
 All notable changes to Emberlane will be documented here.
 
+## v0.3.8
+
+- Restored the Qwen2.5 Inf2 economy lane.
+- Fixed Inf2 runtime model-name matching for chat requests.
+- Updated the Inf2 smoke test to use the active profile model ID.
+
 ## Unreleased
 
 - Prepared the repository for a public alpha release.
