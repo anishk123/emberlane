@@ -22,4 +22,4 @@ curl -fsS "${BASE_URL}/health"
 curl -fsS "${BASE_URL}/v1/models"
 curl -fsS -X POST "${BASE_URL}/v1/chat/completions" \
   -H "Content-Type: application/json" \
-  -d '{"model":"meta-llama/Llama-3.2-1B","messages":[{"role":"user","content":"Say hello from Emberlane Inf2."}],"stream":false}'
+  -d "{\"model\":\"${MODEL_ID:-Qwen/Qwen2.5-1.5B-Instruct}\",\"messages\":[{\"role\":\"user\",\"content\":\"Say hello from Emberlane Inf2.\"}],\"stream\":false}"

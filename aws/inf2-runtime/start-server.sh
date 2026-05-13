@@ -60,6 +60,7 @@ NUM_GPU_BLOCKS_OVERRIDE="${NUM_GPU_BLOCKS_OVERRIDE:-${MAX_NUM_SEQS}}"
 VLLM_IMAGE="${VLLM_IMAGE:-public.ecr.aws/neuron/pytorch-inference-vllm-neuronx:0.16.0-neuronx-py312-sdk2.29.1-ubuntu24.04}"
 
 vllm_args=(serve "${MODEL_PATH}"
+  --served-model-name "${MODEL_ID}"
   --tensor-parallel-size "${TENSOR_PARALLEL_SIZE}"
   --block-size "${BLOCK_SIZE}"
   --max-model-len "${MAX_MODEL_LEN}"
