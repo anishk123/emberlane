@@ -225,7 +225,7 @@ Model selection guide:
 | `qwen35_2b_awq` | single agent, simple coding | 32K | multimodal/text | `cyankiwi/Qwen3.5-2B-AWQ-4bit` on `g5.2xlarge`; Emberlane serves text-only |
 | `qwen35_9b` | hard coding, hard agent, reasoning, deep research | 32K | multimodal/text | `Qwen/Qwen3.5-9B` on `g6e.2xlarge`; Emberlane serves text-only |
 | `qwen35_9b_awq` | hard coding, hard agent, reasoning, deep research | 32K | multimodal/text | `QuantTrio/Qwen3.5-9B-AWQ` on `g6e.2xlarge`; Emberlane serves text-only |
-| `qwen3_4b_inf2_4k` | simple coding, simple agent | 2K | text | cheapest public Inf2 starter |
+| `qwen3_4b_inf2_4k` | simple coding, simple agent | 1K | text | cheapest public Inf2 starter |
 | `qwen3_8b_inf2_32k` | deep research, large context | 32K | text | cheaper Inf2 lane on `inf2.8xlarge`; safe fallback is `inf2.24xlarge` |
 | `qwen3_8b_awq_32k_g5` | simple coding | 32K | text | budget CUDA path |
 | `qwen3_8b_awq_32k` | simple agent, coding, research | 32K | text | larger CUDA path |

@@ -198,7 +198,7 @@ fn model_profiles_parse_and_include_new_public_profiles() {
     assert_eq!(qwen3_4b.runtime, "vllm-neuron");
     assert_eq!(qwen3_4b.status, "recommended");
     assert_eq!(qwen3_4b.model_id, "Qwen/Qwen3-4B-Instruct-2507");
-    assert_eq!(qwen3_4b.max_model_len, 2048);
+    assert_eq!(qwen3_4b.max_model_len, 1024);
     assert_eq!(qwen3_4b.max_num_seqs, Some(1));
     assert_eq!(qwen3_4b.num_gpu_blocks_override, Some(1));
     assert_eq!(
@@ -712,7 +712,7 @@ fn aws_init_config_text_matches_inf2_first_default() {
     assert!(text.contains("instance_type = \"inf2.xlarge\""));
     assert!(text.contains("model_profile = \"qwen3_4b_inf2_4k\""));
     assert!(text.contains("mode = \"economy\""));
-    assert!(text.contains("max_model_len = 2048"));
+    assert!(text.contains("max_model_len = 1024"));
     assert!(text.contains("language_model_only = false"));
     assert!(text.contains("benchmark"));
     assert!(text.contains("timeout_secs = 30"));

@@ -11,13 +11,13 @@
 
 [models.qwen3_4b_inf2_4k]
 sort_order = 10
-display_name = "Qwen3 4B — Conservative Inf2 2K Simple Agent"
+display_name = "Qwen3 4B — Conservative Inf2 1K Simple Agent"
 model_id = "Qwen/Qwen3-4B-Instruct-2507"
 default_accelerator = "inf2"
 recommended_instance = "inf2.xlarge"
 runtime = "vllm-neuron"
 status = "recommended"
-max_model_len = 2048
+max_model_len = 1024
 safe_instance = "inf2.8xlarge"
 fallback_instances = ["inf2.8xlarge"]
 max_num_seqs = 1
@@ -29,7 +29,7 @@ balanced_pricing = "on_demand"
 serving_modality = "text"
 use_case = ["simple agent", "quick", "general", "budget"]
 task_group = "Qwen3 — conservative Inf2 simple agent"
-instance_group = "Inf2 conservative 2K"
+instance_group = "Inf2 conservative 1K"
 visibility = "recommended"
 validation_status = "needs_aws_validation"
 validated = false
