@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{collections::BTreeSet, fs, path::PathBuf, process::Stdio, time::Instant};
 use tokio::process::Command;
+use uuid::Uuid;
 
 fn shell_quote(value: &str) -> String {
     if value.is_empty() {
@@ -31,6 +32,18 @@ fn shell_quote(value: &str) -> String {
 
 fn aws_config_path() -> PathBuf {
     repo_root().join("aws/emberlane.aws.toml")
+}
+
+const DEV_API_KEY_PLACEHOLDER: &str = "dev-secret";
+const RANDOM_API_KEY_PLACEHOLDER: &str = "replace-with-a-long-random-token";
+
+fn generated_api_key() -> String {
+    Uuid::new_v4().simple().to_string()
+}
+
+fn needs_generated_api_key(api_key: Option<&str>) -> bool {
+    let value = api_key.unwrap_or("").trim();
+    value.is_empty() || value == DEV_API_KEY_PLACEHOLDER || value == RANDOM_API_KEY_PLACEHOLDER
 }
 
 pub fn terraform_install_help() -> &'static str {
@@ -173,7 +186,7 @@ impl AwsBackend {
             path,
             config,
             benchmark_prompt: "Explain scale-to-zero inference in two sentences.".to_string(),
-            benchmark_timeout_secs: 900,
+            benchmark_timeout_secs: 30,
             benchmark_retry_interval_secs: 10,
             endpoint_url: None,
         }
@@ -232,6 +245,11 @@ impl AwsBackend {
 
     fn to_file(&self) -> Result<AwsFile, EmberlaneError> {
         let profile = profiles::profile(&self.config.model_profile)?;
+        let api_key = if needs_generated_api_key(self.config.api_key.as_deref()) {
+            generated_api_key()
+        } else {
+            self.config.api_key.clone().unwrap_or_default()
+        };
         Ok(AwsFile {
             aws: AwsSection {
                 region: self.config.region.clone(),
@@ -250,7 +268,7 @@ impl AwsBackend {
                 reasoning_parser: profile.reasoning_parser.unwrap_or_default(),
                 use_baked_ami: self.config.use_baked_ami,
                 public_alb: self.config.public_alb,
-                api_key: self.config.api_key.clone().unwrap_or_default(),
+                api_key,
                 endpoint_url: self.endpoint_url.clone().unwrap_or_default(),
             },
             terraform: TerraformSection {
@@ -1011,6 +1029,11 @@ impl CloudBackend for AwsBackend {
                 self.config.model_profile, vllm_command
             )));
         }
+        let api_key = if needs_generated_api_key(self.config.api_key.as_deref()) {
+            generated_api_key()
+        } else {
+            self.config.api_key.clone().unwrap_or_default()
+        };
         let obj = vars.as_object_mut().unwrap();
         obj.insert("app_name".to_string(), json!("emberlane"));
         obj.insert("aws_region".to_string(), json!(self.config.region));
@@ -1083,7 +1106,7 @@ impl CloudBackend for AwsBackend {
             json!(self.config.use_baked_ami),
         );
         obj.insert("public_alb".to_string(), json!(self.config.public_alb));
-        obj.insert("api_key".to_string(), json!(self.config.api_key));
+        obj.insert("api_key".to_string(), json!(api_key));
         obj.insert("artifact_prefix".to_string(), json!("emberlane/"));
         obj.insert(
             "emberlane_test_run".to_string(),
@@ -1252,6 +1275,11 @@ impl CloudBackend for AwsBackend {
         if let Some(ref endpoint_url) = endpoint_url {
             let mut rendered = self.to_file()?;
             rendered.deploy.endpoint_url = endpoint_url.clone();
+            rendered.deploy.api_key = vars
+                .get("api_key")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string();
             fs::write(
                 &self.path,
                 toml::to_string_pretty(&rendered).map_err(|err| {

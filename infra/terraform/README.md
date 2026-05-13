@@ -54,7 +54,7 @@ Emberlane auto-selects a sensible AMI for the chosen accelerator when you run `c
 
 - The ALB is public by default for a simple dev/test Lambda Function URL path.
 - `allowed_ingress_cidr_blocks = ["0.0.0.0/0"]` is dev-only. A non-VPC Lambda Function URL does not have a stable customer-controlled source IP, so tightening ALB ingress requires a different networking/gateway plan.
-- Lambda Function URL auth defaults to `NONE`; set `api_key`.
+- Lambda Function URL auth defaults to `NONE`; Emberlane will generate a random `api_key` for `aws init` and first deploy if the config leaves it blank.
 - The ALB header gate is optional. Emberlane can run without `X-Emberlane-Secret` by default to keep the public dev path easy to use.
 - ASG `desired_capacity` is ignored by Terraform lifecycle so Emberlane/Lambda can wake and sleep the group without Terraform fighting it.
 - ASG capacity waiting is disabled in Terraform. Temporary EC2 capacity misses are handled by the ASG retry loop and surfaced through Emberlane/AWS status instead of failing `terraform apply`.

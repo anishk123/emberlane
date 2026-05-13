@@ -712,6 +712,19 @@ fn aws_init_config_text_matches_inf2_first_default() {
     assert!(text.contains("mode = \"economy\""));
     assert!(text.contains("max_model_len = 4096"));
     assert!(text.contains("language_model_only = false"));
+    assert!(text.contains("benchmark"));
+    assert!(text.contains("timeout_secs = 30"));
+    let api_key_line = text
+        .lines()
+        .find(|line| line.trim_start().starts_with("api_key = "))
+        .expect("api_key line missing");
+    let api_key = api_key_line
+        .split_once('=')
+        .map(|(_, value)| value.trim().trim_matches('"'))
+        .unwrap();
+    assert_eq!(api_key.len(), 32);
+    assert!(api_key.chars().all(|ch| ch.is_ascii_hexdigit()));
+    assert_ne!(api_key, "dev-secret");
 }
 
 #[test]
