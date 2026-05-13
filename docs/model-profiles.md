@@ -31,7 +31,7 @@ cargo run -- aws models
 - `qwen35_9b` on `g6e.2xlarge` using `Qwen/Qwen3.5-9B`
 - `qwen35_9b_awq` on `g6e.2xlarge` using `QuantTrio/Qwen3.5-9B-AWQ`
 - `qwen3_4b_inf2_4k` on `inf2.xlarge`
-- Model ID: `Qwen/Qwen3-4B`
+- Model ID: `Qwen/Qwen3-4B-Instruct-2507`
 - Runtime: `vllm-neuron`
 
 ## Other Public Profiles

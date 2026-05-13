@@ -11,34 +11,34 @@
 
 [models.qwen3_4b_inf2_4k]
 sort_order = 10
-display_name = "Qwen3 4B — Cheapest Simple Agent on Inf2"
-model_id = "Qwen/Qwen3-4B"
+display_name = "Qwen3 4B — Conservative Inf2 2K Simple Agent"
+model_id = "Qwen/Qwen3-4B-Instruct-2507"
 default_accelerator = "inf2"
 recommended_instance = "inf2.xlarge"
 runtime = "vllm-neuron"
 status = "recommended"
-max_model_len = 4096
+max_model_len = 2048
 safe_instance = "inf2.8xlarge"
 fallback_instances = ["inf2.8xlarge"]
 max_num_seqs = 1
-block_size = 32
+block_size = 16
 num_gpu_blocks_override = 1
 default_mode = "economy"
 default_pricing = "spot"
 balanced_pricing = "on_demand"
 serving_modality = "text"
 use_case = ["simple agent", "quick", "general", "budget"]
-task_group = "Qwen3 — cheapest simple agent"
-instance_group = "Inf2 cheapest"
+task_group = "Qwen3 — conservative Inf2 simple agent"
+instance_group = "Inf2 conservative 2K"
 visibility = "recommended"
 validation_status = "needs_aws_validation"
 validated = false
 require_user_acknowledgement_if_unvalidated = false
-note = "Cheapest new-model profile to try first for simple agents. Context is too small for serious coding or research."
+note = "Conservative Inf2 starting point based on the earlier working path. Lower context and smaller blocks reduce first-boot pressure."
 vllm_extra_args = [
   "--tensor-parallel-size", "2",
   "--max-num-seqs", "1",
-  "--block-size", "32",
+  "--block-size", "16",
   "--num-gpu-blocks-override", "1",
   "--no-enable-prefix-caching",
 ]

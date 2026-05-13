@@ -6,7 +6,7 @@ The Emberlane Inf2 Runtime Pack turns an AWS Inf2 EC2 instance into a wakeable O
 
 The public Inf2 targets are centered on Qwen3:
 
-- `Qwen/Qwen3-4B` on `inf2.xlarge`
+- `Qwen/Qwen3-4B-Instruct-2507` on `inf2.xlarge`
 - `Qwen/Qwen3-8B` on `inf2.8xlarge`, with `inf2.24xlarge` as the larger-memory fallback
 
 Legacy Qwen2.5 Inf2 compatibility profiles remain hidden and only appear with `--experimental` or `--show-hidden`.

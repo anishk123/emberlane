@@ -70,7 +70,7 @@ curl http://ALB_DNS_NAME/health
 curl http://ALB_DNS_NAME/v1/models
 curl -X POST http://ALB_DNS_NAME/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -d '{"model":"Qwen/Qwen3-4B","messages":[{"role":"user","content":"hello"}],"stream":false}'
+  -d '{"model":"Qwen/Qwen3-4B-Instruct-2507","messages":[{"role":"user","content":"hello"}],"stream":false}'
 ```
 
 Through Emberlane:
@@ -86,7 +86,7 @@ Through Lambda WakeBridge:
 curl -X POST "$WAKEBRIDGE_URL/v1/chat/completions" \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"model":"Qwen/Qwen3-4B","messages":[{"role":"user","content":"hello"}],"stream":false}'
+  -d '{"model":"Qwen/Qwen3-4B-Instruct-2507","messages":[{"role":"user","content":"hello"}],"stream":false}'
 ```
 
 Streaming, where supported:
@@ -95,7 +95,7 @@ Streaming, where supported:
 curl -N -X POST "$NODE_WAKEBRIDGE_URL/v1/chat/completions" \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"model":"Qwen/Qwen3-4B","messages":[{"role":"user","content":"hello"}],"stream":true}'
+  -d '{"model":"Qwen/Qwen3-4B-Instruct-2507","messages":[{"role":"user","content":"hello"}],"stream":true}'
 ```
 
 ## Expected First Boot Behavior

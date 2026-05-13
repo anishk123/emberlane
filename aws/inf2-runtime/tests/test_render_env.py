@@ -13,7 +13,7 @@ class RenderEnvTests(unittest.TestCase):
     def test_qwen3_4b_env(self):
         models = render_env.load_models(ROOT / "models.yaml")
         env = render_env.profile_env(models, "qwen3_4b_inf2_4k")
-        self.assertEqual(env["MODEL_ID"], "Qwen/Qwen3-4B")
+        self.assertEqual(env["MODEL_ID"], "Qwen/Qwen3-4B-Instruct-2507")
         self.assertEqual(env["DEVICE"], "neuron")
         self.assertEqual(env["STATUS"], "validated_target")
 

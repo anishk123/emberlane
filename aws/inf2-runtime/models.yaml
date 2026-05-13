@@ -1,16 +1,16 @@
 models:
   qwen3_4b_inf2_4k:
-    model_id: "Qwen/Qwen3-4B"
-    display_name: "Qwen 3 4B (Neuron 4K)"
+    model_id: "Qwen/Qwen3-4B-Instruct-2507"
+    display_name: "Qwen 3 4B Instruct (Neuron 2K)"
     runtime: "vllm-neuron"
     instance_type: "inf2.xlarge"
     port: 8000
     openai_base_path: "/v1"
     health_check: "/health"
     tensor_parallel_size: 2
-    max_model_len: 4096
-    max_num_seqs: 4
-    block_size: 32
+    max_model_len: 2048
+    max_num_seqs: 1
+    block_size: 16
     device: "neuron"
     status: "validated_target"
 

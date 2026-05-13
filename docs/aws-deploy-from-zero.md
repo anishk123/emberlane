@@ -191,7 +191,7 @@ The first boot can include:
 - Neuron graph compilation.
 - A proxy on port `8080` that serves `/health` and forwards `/v1/*` to the model server on port `8000`.
 - Health check transition from `503` to `200`.
-- For Qwen3 Neuron on Inf2, Emberlane follows the official text-only serving shape: `Qwen/Qwen3-4B` on `inf2.xlarge` for the default path, and `Qwen/Qwen3-8B` on `inf2.8xlarge` for the cheaper 32K validation path. Use `inf2.24xlarge` as the larger-memory fallback if the 32K profile needs more accelerator memory.
+- For Qwen3 Neuron on Inf2, Emberlane follows the official text-only serving shape: `Qwen/Qwen3-4B-Instruct-2507` on `inf2.xlarge` for the conservative default path, and `Qwen/Qwen3-8B` on `inf2.8xlarge` for the cheaper 32K validation path. Use `inf2.24xlarge` as the larger-memory fallback if the 32K profile needs more accelerator memory.
 - For Qwen3 AWQ on CUDA/G5, Emberlane follows the official text-only serving shape: `Qwen/Qwen3-8B-AWQ`, `--reasoning-parser qwen3`, and a 32K default context on the single-GPU `g5.2xlarge` path.
 
 This can take several minutes. Warm Pools and baked AMIs reduce repeated work, but they do not guarantee a fixed wake time. Warm Pools are an advanced option, not the default balanced behavior.

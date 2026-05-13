@@ -12,7 +12,7 @@ Neuron still adds real operational complexity:
 
 The public Inf2 menu is centered on Qwen3:
 
-- `qwen3_4b_inf2_4k` on `inf2.xlarge`
+- `qwen3_4b_inf2_4k` on `inf2.xlarge` using `Qwen/Qwen3-4B-Instruct-2507`
 - `qwen3_8b_inf2_32k` on `inf2.8xlarge`, with `inf2.24xlarge` as the larger-memory fallback
 
 Legacy Qwen2.5 Inf2 compatibility profiles remain hidden and only appear with `--experimental` or `--show-hidden`.

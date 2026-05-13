@@ -15,7 +15,9 @@ class ModelConfigTests(unittest.TestCase):
         self.assertIn("llama32_1b", models)
         self.assertIn("qwen3_4b_inf2_4k", models)
         self.assertIn("qwen3_8b_inf2_32k", models)
-        self.assertEqual(models["qwen3_4b_inf2_4k"]["model_id"], "Qwen/Qwen3-4B")
+        self.assertEqual(
+            models["qwen3_4b_inf2_4k"]["model_id"], "Qwen/Qwen3-4B-Instruct-2507"
+        )
         self.assertEqual(models["llama32_1b"]["status"], "hidden")
 
     def test_qwen_profile_is_ready(self):

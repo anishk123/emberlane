@@ -197,13 +197,13 @@ fn model_profiles_parse_and_include_new_public_profiles() {
     assert_eq!(qwen3_4b.recommended_instance, "inf2.xlarge");
     assert_eq!(qwen3_4b.runtime, "vllm-neuron");
     assert_eq!(qwen3_4b.status, "recommended");
-    assert_eq!(qwen3_4b.model_id, "Qwen/Qwen3-4B");
-    assert_eq!(qwen3_4b.max_model_len, 4096);
+    assert_eq!(qwen3_4b.model_id, "Qwen/Qwen3-4B-Instruct-2507");
+    assert_eq!(qwen3_4b.max_model_len, 2048);
     assert_eq!(qwen3_4b.max_num_seqs, Some(1));
     assert_eq!(qwen3_4b.num_gpu_blocks_override, Some(1));
     assert_eq!(
         qwen3_4b.task_group.as_deref(),
-        Some("Qwen3 — cheapest simple agent")
+        Some("Qwen3 — conservative Inf2 simple agent")
     );
     assert_eq!(qwen3_4b.serving_modality.as_deref(), Some("text"));
 
@@ -611,14 +611,14 @@ async fn aws_backend_renders_cuda_and_rope_scaling_tfvars() {
         .unwrap();
     let vars = qwen3_inf2.render_deploy_vars().await.unwrap();
     assert_eq!(vars["instance_type"], "inf2.xlarge");
-    assert_eq!(vars["model_id"], "Qwen/Qwen3-4B");
+    assert_eq!(vars["model_id"], "Qwen/Qwen3-4B-Instruct-2507");
     assert_eq!(vars["runtime_pack"], "inf2-neuron");
     assert_eq!(
         vars["fallback_instance_types"],
         serde_json::json!(["inf2.8xlarge"])
     );
     let command = vars["vllm_command"].as_str().unwrap();
-    assert!(command.starts_with("serve Qwen/Qwen3-4B "));
+    assert!(command.starts_with("serve Qwen/Qwen3-4B-Instruct-2507 "));
     assert!(!command.contains("--device neuron"));
 }
 
@@ -712,7 +712,7 @@ fn aws_init_config_text_matches_inf2_first_default() {
     assert!(text.contains("instance_type = \"inf2.xlarge\""));
     assert!(text.contains("model_profile = \"qwen3_4b_inf2_4k\""));
     assert!(text.contains("mode = \"economy\""));
-    assert!(text.contains("max_model_len = 4096"));
+    assert!(text.contains("max_model_len = 2048"));
     assert!(text.contains("language_model_only = false"));
     assert!(text.contains("benchmark"));
     assert!(text.contains("timeout_secs = 30"));
@@ -749,7 +749,7 @@ fn examples_and_readme_are_cleaned_to_active_surface() {
     assert!(readme.contains("OpenAI-compatible chat endpoints"));
     assert!(readme.contains("Ollama"));
     assert!(readme.contains("vLLM CUDA"));
-    assert!(readme.contains("Qwen/Qwen3-4B"));
+    assert!(readme.contains("Qwen/Qwen3-4B-Instruct-2507"));
     assert!(readme.to_lowercase().contains("economy"));
     assert!(readme.to_lowercase().contains("balanced"));
     assert!(readme.contains("Inf2"));
