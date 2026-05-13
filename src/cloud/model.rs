@@ -110,7 +110,7 @@ impl Default for CloudDeployConfig {
             environment: "dev".to_string(),
             accelerator: Accelerator::Inf2,
             instance_type: "inf2.xlarge".to_string(),
-            model_profile: "qwen3_4b_inf2_4k".to_string(),
+            model_profile: "qwen25_15b_inf2_economy".to_string(),
             mode: crate::cloud::modes::CostMode::Economy,
             terraform_dir: terraform_dir(),
             api_key: Some("dev-secret".to_string()),

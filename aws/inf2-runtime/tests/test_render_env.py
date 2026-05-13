@@ -10,16 +10,16 @@ SPEC.loader.exec_module(render_env)
 
 
 class RenderEnvTests(unittest.TestCase):
-    def test_qwen3_4b_env(self):
+    def test_qwen25_economy_env(self):
         models = render_env.load_models(ROOT / "models.yaml")
-        env = render_env.profile_env(models, "qwen3_4b_inf2_4k")
-        self.assertEqual(env["MODEL_ID"], "Qwen/Qwen3-4B-Instruct-2507")
+        env = render_env.profile_env(models, "qwen25_15b_inf2_economy")
+        self.assertEqual(env["MODEL_ID"], "Qwen/Qwen2.5-1.5B-Instruct")
         self.assertEqual(env["DEVICE"], "neuron")
         self.assertEqual(env["STATUS"], "validated_target")
 
     def test_model_id_override(self):
         models = render_env.load_models(ROOT / "models.yaml")
-        env = render_env.profile_env(models, "qwen3_4b_inf2_4k", "custom/model")
+        env = render_env.profile_env(models, "qwen25_15b_inf2_economy", "custom/model")
         self.assertEqual(env["MODEL_ID"], "custom/model")
 
     def test_qwen3_8b_inf2_32k_env(self):

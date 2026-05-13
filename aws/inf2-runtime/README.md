@@ -4,12 +4,12 @@ The Emberlane Inf2 Runtime Pack turns an AWS Inf2 EC2 instance into a wakeable O
 
 ## Public Inf2 Profiles
 
-The public Inf2 targets are centered on Qwen3:
+The public Inf2 targets are centered on the conservative Qwen2.5 economy lane:
 
-- `Qwen/Qwen3-4B-Instruct-2507` on `inf2.xlarge`
+- `Qwen/Qwen2.5-1.5B-Instruct` on `inf2.xlarge`
 - `Qwen/Qwen3-8B` on `inf2.8xlarge`, with `inf2.24xlarge` as the larger-memory fallback
 
-Legacy Qwen2.5 Inf2 compatibility profiles remain hidden and only appear with `--experimental` or `--show-hidden`.
+Legacy Qwen3 Inf2 experiments remain hidden and only appear with `--experimental` or `--show-hidden`.
 
 ## Quick Start
 
@@ -21,7 +21,7 @@ docker build -f Dockerfile.neuron -t emberlane-inf2-neuron .
 For a manual boot on an Inf2 EC2 instance:
 
 1. Pick an AWS Neuron Deep Learning AMI for Ubuntu.
-2. Use `inf2.xlarge` for `qwen3_4b_inf2_4k`.
+2. Use `inf2.xlarge` for `qwen25_15b_inf2_economy`.
 3. Use `inf2.8xlarge` for `qwen3_8b_inf2_32k`; move to `inf2.24xlarge` if the 32K test needs more accelerator memory.
 4. Attach at least 100 GB gp3.
 5. Ensure `/dev/neuron0` exists.
@@ -33,7 +33,7 @@ For a manual boot on an Inf2 EC2 instance:
 
 ```sh
 HF_TOKEN=...
-MODEL_PROFILE=qwen3_4b_inf2_4k
+MODEL_PROFILE=qwen25_15b_inf2_economy
 ```
 
 For the larger Inf2 profile, set `MODEL_PROFILE=qwen3_8b_inf2_32k`.
@@ -51,7 +51,7 @@ The runtime proxy listens on port `8080` and forwards `/v1/*` to the server on p
 ## S3 Artifacts
 
 ```sh
-S3_NEURON_ARTIFACTS_URI=s3://bucket/prefix/neuron-artifacts/qwen3_4b_inf2_4k/
+S3_NEURON_ARTIFACTS_URI=s3://bucket/prefix/neuron-artifacts/qwen25_15b_inf2_economy/
 SYNC_ARTIFACTS_BACK=true
 ```
 

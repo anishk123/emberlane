@@ -61,7 +61,7 @@ export INF2_PYTHON="${INF2_VENV}/bin/python"
 
 if [[ ! -f /etc/emberlane/inf2.env ]]; then
   cat >/etc/emberlane/inf2.env <<'ENV'
-MODEL_PROFILE=qwen3_4b_inf2_4k
+MODEL_PROFILE=qwen25_15b_inf2_economy
 HF_HOME=/opt/emberlane/model-cache
 TRANSFORMERS_CACHE=/opt/emberlane/model-cache
 NEURON_COMPILED_ARTIFACTS=/opt/emberlane/neuron-cache

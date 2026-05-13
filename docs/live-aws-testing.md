@@ -78,7 +78,7 @@ Use `--keep-on-failure` only for debugging. Otherwise diagnostics are collected 
 
 ```sh
 cargo run -- test aws \
-  --models qwen3_4b_inf2_4k,qwen3_8b_inf2_32k \
+  --models qwen25_15b_inf2_economy,qwen3_8b_inf2_32k \
   --accelerator inf2 \
   --instance inf2.xlarge \
   --mode economy \
@@ -86,7 +86,7 @@ cargo run -- test aws \
   --yes-i-understand-this-creates-aws-resources
 ```
 
-The default AWS path now starts from `qwen3_4b_inf2_4k` on `inf2.xlarge`.
+The default AWS Inf2 path now starts from `qwen25_15b_inf2_economy` on `inf2.xlarge`.
 
 ## Matrix
 

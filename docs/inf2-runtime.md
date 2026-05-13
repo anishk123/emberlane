@@ -4,12 +4,12 @@ The Emberlane Inf2 Runtime Pack turns an AWS Inf2 EC2 instance into a wakeable O
 
 ## Public Inf2 Targets
 
-The public Inf2 targets are centered on Qwen3:
+The public Inf2 targets are centered on the conservative Qwen2.5 economy lane:
 
-- `Qwen/Qwen3-4B-Instruct-2507` on `inf2.xlarge`
+- `Qwen/Qwen2.5-1.5B-Instruct` on `inf2.xlarge`
 - `Qwen/Qwen3-8B` on `inf2.8xlarge`, with `inf2.24xlarge` as the larger-memory fallback
 
-Legacy Qwen2.5 Inf2 compatibility profiles remain hidden and only appear with `--experimental` or `--show-hidden`.
+Legacy Qwen3 Inf2 experiments remain hidden and only appear with `--experimental` or `--show-hidden`.
 
 Neuron guidance matters here: the vLLM Neuron docs recommend serving Qwen-family checkpoints from a local path instead of the Hugging Face model ID when shard-on-load is involved, and the compiled profile needs a matching `num_gpu_blocks_override`. Emberlane's runtime pack and Inf2 profiles already wire that in.
 
@@ -53,7 +53,7 @@ For gated Hugging Face models, set:
 
 ```sh
 HF_TOKEN=...
-MODEL_PROFILE=qwen3_4b_inf2_4k
+MODEL_PROFILE=qwen25_15b_inf2_economy
 ```
 
 For the larger Inf2 profile, set `MODEL_PROFILE=qwen3_8b_inf2_32k`.
@@ -71,7 +71,7 @@ NEURON_COMPILED_ARTIFACTS=/opt/emberlane/neuron-cache
 Optional S3 sync:
 
 ```sh
-S3_NEURON_ARTIFACTS_URI=s3://bucket/prefix/neuron-artifacts/qwen3_4b_inf2_4k/
+S3_NEURON_ARTIFACTS_URI=s3://bucket/prefix/neuron-artifacts/qwen25_15b_inf2_economy/
 SYNC_ARTIFACTS_BACK=true
 ```
 

@@ -73,7 +73,7 @@ def main():
     parser.add_argument("--models", default=str(root / "models.yaml"))
     parser.add_argument(
         "--profile",
-        default=os.environ.get("MODEL_PROFILE", "qwen3_4b_inf2_4k"),
+        default=os.environ.get("MODEL_PROFILE", "qwen25_15b_inf2_economy"),
     )
     parser.add_argument("--model-id", default=os.environ.get("MODEL_ID"))
     parser.add_argument("--format", choices=["shell", "json"], default="shell")

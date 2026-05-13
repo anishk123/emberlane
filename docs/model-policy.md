@@ -10,7 +10,7 @@ Emberlane is opinionated on purpose. The public default should be easy to unders
 | `qwen35_2b_awq` | single agent, simple coding | multimodal/text |
 | `qwen35_9b` | hard coding, hard agent, reasoning, deep research | multimodal/text |
 | `qwen35_9b_awq` | hard coding, hard agent, reasoning, deep research | multimodal/text |
-| `qwen3_4b_inf2_4k` | simple coding, simple agents | text |
+| `qwen25_15b_inf2_economy` | simple coding, simple agents | text |
 | `qwen3_8b_awq_32k_g5` | simple coding | text |
 | `qwen3_8b_awq_32k` | simple agents | text |
 | `qwen3_8b_inf2_32k` | Inf2 32K validation, deep research | text |
@@ -26,7 +26,7 @@ That makes Qwen3.5 on CUDA a real, documented path, not a guess.
 
 ## Why The Menu Keeps Cheapest First
 
-The public menu is sorted by a cheapest-first rule inside each family. For Qwen3.5 that means `qwen35_2b` appears before `qwen35_2b_awq`, and `qwen35_9b` appears before `qwen35_9b_awq`. For Qwen3, the Inf2 and CUDA starters stay around as lower-risk follow-ups.
+The public menu is sorted by a cheapest-first rule inside each family. For Qwen3.5 that means `qwen35_2b` appears before `qwen35_2b_awq`, and `qwen35_9b` appears before `qwen35_9b_awq`. For Inf2, the public starter is the conservative Qwen2.5 economy lane.
 
 `g5.2xlarge` is the cheapest public place to try Qwen3.5-2B, while `g6e.2xlarge` is the cleaner place to try Qwen3.5-9B. If Qwen3.5-9B needs more room, `g6e.4xlarge` is the next safe step-up.
 
@@ -46,7 +46,7 @@ The public menu is sorted by a cheapest-first rule inside each family. For Qwen3
 
 128K is useful for deep research and long prompts. It stays in the public menu because some users need the extra headroom, but the simple coding path does not depend on it.
 
-Legacy Qwen2.5 Inf2 compatibility profiles remain hidden from the public menu and only show up with `--experimental` or `--show-hidden`.
+Legacy Qwen3 Inf2 experiments remain hidden from the public menu and only show up with `--experimental` or `--show-hidden`.
 
 ## Why Llama Is Hidden
 

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="${EMBERLANE_INF2_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
-MODEL_PROFILE="${MODEL_PROFILE:-qwen3_4b_inf2_4k}"
+MODEL_PROFILE="${MODEL_PROFILE:-qwen25_15b_inf2_economy}"
 
 eval "$("${ROOT_DIR}/scripts/render-env.py" --profile "${MODEL_PROFILE}")"
 

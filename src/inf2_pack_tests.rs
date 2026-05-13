@@ -35,8 +35,8 @@ fn inf2_runtime_pack_files_exist_and_models_are_defined() {
     assert!(models.contains("llama32_1b"));
     assert!(models.contains("meta-llama/Llama-3.2-1B"));
     assert!(models.contains("status: \"hidden\""));
-    assert!(models.contains("qwen3_4b_inf2_4k"));
-    assert!(models.contains("Qwen/Qwen3-4B-Instruct-2507"));
+    assert!(models.contains("qwen25_15b_inf2_economy"));
+    assert!(models.contains("Qwen/Qwen2.5-1.5B-Instruct"));
     assert!(models.contains("qwen3_8b_inf2_32k"));
     assert!(models.contains("Qwen/Qwen3-8B"));
     assert!(models.contains("qwen25_coder_7b_inf2_4k"));
@@ -54,28 +54,28 @@ fn render_env_outputs_llama_and_qwen_profiles() {
     let qwen4b = Command::new("python3")
         .arg(&script)
         .arg("--profile")
-        .arg("qwen3_4b_inf2_4k")
+        .arg("qwen25_15b_inf2_economy")
         .arg("--format")
         .arg("json")
         .output()
         .unwrap();
     assert!(qwen4b.status.success());
     let text = String::from_utf8(qwen4b.stdout).unwrap();
-    assert!(text.contains("\"MODEL_ID\": \"Qwen/Qwen3-4B-Instruct-2507\""));
+    assert!(text.contains("\"MODEL_ID\": \"Qwen/Qwen2.5-1.5B-Instruct\""));
     assert!(text.contains("\"TENSOR_PARALLEL_SIZE\": \"2\""));
     assert!(text.contains("\"STATUS\": \"validated_target\""));
 
     let qwen = Command::new("python3")
         .arg(&script)
         .arg("--profile")
-        .arg("qwen3_4b_inf2_4k")
+        .arg("qwen25_15b_inf2_economy")
         .arg("--format")
         .arg("json")
         .output()
         .unwrap();
     assert!(qwen.status.success());
     let text = String::from_utf8(qwen.stdout).unwrap();
-    assert!(text.contains("Qwen/Qwen3-4B-Instruct-2507"));
+    assert!(text.contains("Qwen/Qwen2.5-1.5B-Instruct"));
     assert!(text.contains("\"STATUS\": \"validated_target\""));
 
     let qwen3 = Command::new("python3")
@@ -205,9 +205,9 @@ fn node_lambda_bridge_contains_auth_warming_and_streaming_logic() {
 #[test]
 fn docs_and_config_include_inf2_llama() {
     assert!(read("emberlane.example.toml").contains("id = \"inf2-llama\""));
-    assert!(read("docs/inf2-runtime.md").contains("Qwen/Qwen3-4B-Instruct-2507"));
+    assert!(read("docs/inf2-runtime.md").contains("Qwen/Qwen2.5-1.5B-Instruct"));
     assert!(read("docs/aws-end-to-end.md").contains("Lambda VPC streaming limitation"));
-    assert!(read("docs/inf2-runtime.md").contains("qwen3_4b_inf2_4k"));
+    assert!(read("docs/inf2-runtime.md").contains("qwen25_15b_inf2_economy"));
     assert!(read("docs/inf2-runtime.md").contains("qwen3_8b_inf2_32k"));
 }
 

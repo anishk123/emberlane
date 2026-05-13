@@ -77,8 +77,8 @@ If you want the AWQ variant of the stronger lane:
 If you want the cheaper Inf2 lane:
 
 - runtime: `vLLM Neuron`
-- model: `qwen3_4b_inf2_4k`
-- repo: `Qwen/Qwen3-4B-Instruct-2507`
+- model: `qwen25_15b_inf2_economy`
+- repo: `Qwen/Qwen2.5-1.5B-Instruct`
 - instance: `inf2.xlarge`
 - task: `Simple coding`
 - mode: `economy` on Spot, or `balanced` when you want ready-first behavior
@@ -165,7 +165,7 @@ Emberlane is designed so you can keep the defaults simple and still compare seve
 Example:
 
 ```sh
-cargo run -- aws deploy --profile your-profile --model qwen3_4b_inf2_4k --mode balanced
+cargo run -- aws deploy --profile your-profile --model qwen25_15b_inf2_economy --mode balanced
 cargo run -- aws deploy --profile your-profile --model deepseek_r1_distill_qwen14b_64k --mode economy
 cargo run -- aws benchmark --profile your-profile
 ```
@@ -194,7 +194,7 @@ cargo run -- upload README.md docs/aws-deploy-from-zero.md
 Then ask a question about one or more uploaded documents:
 
 ```sh
-cargo run -- chat-files qwen3_4b_inf2_4k <file_id_1> <file_id_2> --message "compare the AWS deployment notes"
+cargo run -- chat-files qwen25_15b_inf2_economy <file_id_1> <file_id_2> --message "compare the AWS deployment notes"
 ```
 
 For a single document, `chat-file` still works:
@@ -225,7 +225,7 @@ Model selection guide:
 | `qwen35_2b_awq` | single agent, simple coding | 32K | multimodal/text | `cyankiwi/Qwen3.5-2B-AWQ-4bit` on `g5.2xlarge`; Emberlane serves text-only |
 | `qwen35_9b` | hard coding, hard agent, reasoning, deep research | 32K | multimodal/text | `Qwen/Qwen3.5-9B` on `g6e.2xlarge`; Emberlane serves text-only |
 | `qwen35_9b_awq` | hard coding, hard agent, reasoning, deep research | 32K | multimodal/text | `QuantTrio/Qwen3.5-9B-AWQ` on `g6e.2xlarge`; Emberlane serves text-only |
-| `qwen3_4b_inf2_4k` | simple coding, simple agent | 1K | text | cheapest public Inf2 starter |
+| `qwen25_15b_inf2_economy` | simple coding, simple agent | 1K | text | cheapest public Inf2 starter |
 | `qwen3_8b_inf2_32k` | deep research, large context | 32K | text | cheaper Inf2 lane on `inf2.8xlarge`; safe fallback is `inf2.24xlarge` |
 | `qwen3_8b_awq_32k_g5` | simple coding | 32K | text | budget CUDA path |
 | `qwen3_8b_awq_32k` | simple agent, coding, research | 32K | text | larger CUDA path |

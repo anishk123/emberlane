@@ -9,10 +9,10 @@
 # If the CLI still shows profiles grouped by instance after this change,
 # update the CLI to sort by sort_order and hide visibility = "hidden".
 
-[models.qwen3_4b_inf2_4k]
+[models.qwen25_15b_inf2_economy]
 sort_order = 10
-display_name = "Qwen3 4B — Conservative Inf2 1K Simple Agent"
-model_id = "Qwen/Qwen3-4B-Instruct-2507"
+display_name = "Qwen2.5 1.5B — Conservative Inf2 1K Simple Agent"
+model_id = "Qwen/Qwen2.5-1.5B-Instruct"
 default_accelerator = "inf2"
 recommended_instance = "inf2.xlarge"
 runtime = "vllm-neuron"
@@ -20,15 +20,15 @@ status = "recommended"
 max_model_len = 1024
 safe_instance = "inf2.8xlarge"
 fallback_instances = ["inf2.8xlarge"]
-max_num_seqs = 1
+max_num_seqs = 4
 block_size = 16
-num_gpu_blocks_override = 1
+num_gpu_blocks_override = 4
 default_mode = "economy"
 default_pricing = "spot"
 balanced_pricing = "on_demand"
 serving_modality = "text"
-use_case = ["simple agent", "quick", "general", "budget"]
-task_group = "Qwen3 — conservative Inf2 simple agent"
+use_case = ["simple agent", "simple coding", "quick", "general", "budget"]
+task_group = "Qwen2.5 — conservative Inf2 simple agent"
 instance_group = "Inf2 conservative 1K"
 visibility = "recommended"
 validation_status = "needs_aws_validation"
@@ -37,9 +37,9 @@ require_user_acknowledgement_if_unvalidated = false
 note = "Conservative Inf2 starting point based on the earlier working path. Lower context and smaller blocks reduce first-boot pressure."
 vllm_extra_args = [
   "--tensor-parallel-size", "2",
-  "--max-num-seqs", "1",
+  "--max-num-seqs", "4",
   "--block-size", "16",
-  "--num-gpu-blocks-override", "1",
+  "--num-gpu-blocks-override", "4",
   "--no-enable-prefix-caching",
 ]
 

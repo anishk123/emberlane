@@ -1,7 +1,7 @@
 models:
-  qwen3_4b_inf2_4k:
-    model_id: "Qwen/Qwen3-4B-Instruct-2507"
-    display_name: "Qwen 3 4B Instruct (Neuron 1K)"
+  qwen25_15b_inf2_economy:
+    model_id: "Qwen/Qwen2.5-1.5B-Instruct"
+    display_name: "Qwen 2.5 1.5B Instruct (Neuron 1K)"
     runtime: "vllm-neuron"
     instance_type: "inf2.xlarge"
     port: 8000
@@ -9,7 +9,7 @@ models:
     health_check: "/health"
     tensor_parallel_size: 2
     max_model_len: 1024
-    max_num_seqs: 1
+    max_num_seqs: 4
     block_size: 16
     device: "neuron"
     status: "validated_target"
@@ -100,21 +100,6 @@ models:
     health_check: "/health"
     tensor_parallel_size: 2
     max_model_len: 4096
-    max_num_seqs: 16
-    block_size: 16
-    device: "neuron"
-    status: "hidden"
-
-  qwen3_4b:
-    model_id: "Qwen/Qwen3-4B-Instruct-2507"
-    display_name: "Qwen 3 4B Instruct (Neuron)"
-    runtime: "vllm-neuron"
-    instance_type: "inf2.xlarge"
-    port: 8000
-    openai_base_path: "/v1"
-    health_check: "/health"
-    tensor_parallel_size: 2
-    max_model_len: 2048
     max_num_seqs: 16
     block_size: 16
     device: "neuron"

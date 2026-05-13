@@ -15,12 +15,12 @@ Client
 ## Steps
 
 1. Choose a model profile with `cargo run -- aws models`.
-2. Start with Qwen3 on Inf2/Neuron for the cheapest proven coding path, or CUDA/G5 if you want NVIDIA headroom.
+2. Start with Qwen2.5 on Inf2/Neuron for the cheapest proven coding path, or CUDA/G5 if you want NVIDIA headroom.
 3. Bake an AMI or create a launch template that installs the runtime pack.
 4. Create an ALB target group on port `8080` with health path `/health`.
 5. Create an ASG with min `0`, desired `1` for `balanced` or `economy`, max `1`.
 6. Optionally add a Warm Pool in stopped or hibernated state only if you explicitly want that extra prepared-capacity tradeoff.
-7. Configure Emberlane with the `qwen3_4b_inf2_4k` `aws_asg` runtime.
+7. Configure Emberlane with the `qwen25_15b_inf2_economy` `aws_asg` runtime.
 8. Deploy Lambda WakeBridge.
 9. Send an OpenAI-compatible request.
 10. Verify streaming through the Node bridge if your Lambda networking supports it.
@@ -53,11 +53,11 @@ User data should:
 mkdir -p /opt/emberlane
 # copy or clone the runtime pack to /opt/emberlane/inf2-runtime
 cat >/etc/emberlane/inf2.env <<'ENV'
-MODEL_PROFILE=qwen3_4b_inf2_4k
+MODEL_PROFILE=qwen25_15b_inf2_economy
 HF_HOME=/opt/emberlane/model-cache
 TRANSFORMERS_CACHE=/opt/emberlane/model-cache
 NEURON_COMPILED_ARTIFACTS=/opt/emberlane/neuron-cache
-S3_NEURON_ARTIFACTS_URI=s3://bucket/prefix/neuron-artifacts/qwen3_4b_inf2_4k/
+S3_NEURON_ARTIFACTS_URI=s3://bucket/prefix/neuron-artifacts/qwen25_15b_inf2_economy/
 SYNC_ARTIFACTS_BACK=false
 ENV
 /opt/emberlane/inf2-runtime/bootstrap.sh
@@ -70,14 +70,14 @@ curl http://ALB_DNS_NAME/health
 curl http://ALB_DNS_NAME/v1/models
 curl -X POST http://ALB_DNS_NAME/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -d '{"model":"Qwen/Qwen3-4B-Instruct-2507","messages":[{"role":"user","content":"hello"}],"stream":false}'
+  -d '{"model":"Qwen/Qwen2.5-1.5B-Instruct","messages":[{"role":"user","content":"hello"}],"stream":false}'
 ```
 
 Through Emberlane:
 
 ```sh
-cargo run -- aws doctor qwen3_4b_inf2_4k
-cargo run -- chat qwen3_4b_inf2_4k "hello"
+cargo run -- aws doctor qwen25_15b_inf2_economy
+cargo run -- chat qwen25_15b_inf2_economy "hello"
 ```
 
 Through Lambda WakeBridge:
@@ -86,7 +86,7 @@ Through Lambda WakeBridge:
 curl -X POST "$WAKEBRIDGE_URL/v1/chat/completions" \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"model":"Qwen/Qwen3-4B-Instruct-2507","messages":[{"role":"user","content":"hello"}],"stream":false}'
+  -d '{"model":"Qwen/Qwen2.5-1.5B-Instruct","messages":[{"role":"user","content":"hello"}],"stream":false}'
 ```
 
 Streaming, where supported:
@@ -95,7 +95,7 @@ Streaming, where supported:
 curl -N -X POST "$NODE_WAKEBRIDGE_URL/v1/chat/completions" \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"model":"Qwen/Qwen3-4B-Instruct-2507","messages":[{"role":"user","content":"hello"}],"stream":true}'
+  -d '{"model":"Qwen/Qwen2.5-1.5B-Instruct","messages":[{"role":"user","content":"hello"}],"stream":true}'
 ```
 
 ## Expected First Boot Behavior
@@ -119,5 +119,5 @@ This may take several minutes. Warm Pools and baked AMIs reduce repeated startup
 - ALB unhealthy: check target group port `8080`, security groups, and `/health`.
 - Lambda VPC streaming limitation: Function URL response streaming is unavailable for VPC-configured Lambda.
 - ASG set desired capacity denied: check `autoscaling:SetDesiredCapacity`.
-- Model too large: start with `qwen3_4b_inf2_4k` on `inf2.xlarge`.
+- Model too large: start with `qwen25_15b_inf2_economy` on `inf2.xlarge`.
 - Neuron device missing: verify instance type, AMI, drivers, and `/dev/neuron0`.

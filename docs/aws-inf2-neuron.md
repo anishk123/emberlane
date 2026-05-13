@@ -10,12 +10,12 @@ Neuron still adds real operational complexity:
 - cache management
 - longer first-boot paths
 
-The public Inf2 menu is centered on Qwen3:
+The public Inf2 menu is centered on the conservative Qwen2.5 economy lane:
 
-- `qwen3_4b_inf2_4k` on `inf2.xlarge` using `Qwen/Qwen3-4B-Instruct-2507`
+- `qwen25_15b_inf2_economy` on `inf2.xlarge` using `Qwen/Qwen2.5-1.5B-Instruct`
 - `qwen3_8b_inf2_32k` on `inf2.8xlarge`, with `inf2.24xlarge` as the larger-memory fallback
 
-Legacy Qwen2.5 Inf2 compatibility profiles remain hidden and only appear with `--experimental` or `--show-hidden`.
+Legacy Qwen3 Inf2 experiments remain hidden and only appear with `--experimental` or `--show-hidden`.
 
 Neuron's vLLM guide also recommends downloading Qwen-family checkpoints locally instead of serving the Hugging Face ID directly when shard-on-load is involved, and setting a matching `num_gpu_blocks_override`. Emberlane's runtime pack does that for the Inf2 profiles it exposes.
 
@@ -24,7 +24,7 @@ Neuron's vLLM guide also recommends downloading Qwen-family checkpoints locally 
 Use:
 
 ```sh
-cargo run -- aws deploy --model qwen3_4b_inf2_4k --accelerator inf2 --instance inf2.xlarge --mode economy
+cargo run -- aws deploy --model qwen25_15b_inf2_economy --accelerator inf2 --instance inf2.xlarge --mode economy
 ```
 
 Benchmark before claiming savings. Warm Pools and cached artifacts can help, but do not guarantee fixed wake times.

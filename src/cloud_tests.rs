@@ -191,21 +191,21 @@ fn model_profiles_parse_and_include_new_public_profiles() {
     assert_eq!(deepseek.task_group.as_deref(), Some("DeepSeek — reasoning"));
     assert_eq!(deepseek.serving_modality.as_deref(), Some("text"));
 
-    let qwen3_4b = profiles.get("qwen3_4b_inf2_4k").unwrap();
-    assert_eq!(qwen3_4b.visibility.as_deref(), Some("recommended"));
-    assert_eq!(qwen3_4b.default_accelerator, "inf2");
-    assert_eq!(qwen3_4b.recommended_instance, "inf2.xlarge");
-    assert_eq!(qwen3_4b.runtime, "vllm-neuron");
-    assert_eq!(qwen3_4b.status, "recommended");
-    assert_eq!(qwen3_4b.model_id, "Qwen/Qwen3-4B-Instruct-2507");
-    assert_eq!(qwen3_4b.max_model_len, 1024);
-    assert_eq!(qwen3_4b.max_num_seqs, Some(1));
-    assert_eq!(qwen3_4b.num_gpu_blocks_override, Some(1));
+    let qwen25_inf2 = profiles.get("qwen25_15b_inf2_economy").unwrap();
+    assert_eq!(qwen25_inf2.visibility.as_deref(), Some("recommended"));
+    assert_eq!(qwen25_inf2.default_accelerator, "inf2");
+    assert_eq!(qwen25_inf2.recommended_instance, "inf2.xlarge");
+    assert_eq!(qwen25_inf2.runtime, "vllm-neuron");
+    assert_eq!(qwen25_inf2.status, "recommended");
+    assert_eq!(qwen25_inf2.model_id, "Qwen/Qwen2.5-1.5B-Instruct");
+    assert_eq!(qwen25_inf2.max_model_len, 1024);
+    assert_eq!(qwen25_inf2.max_num_seqs, Some(4));
+    assert_eq!(qwen25_inf2.num_gpu_blocks_override, Some(4));
     assert_eq!(
-        qwen3_4b.task_group.as_deref(),
-        Some("Qwen3 — conservative Inf2 simple agent")
+        qwen25_inf2.task_group.as_deref(),
+        Some("Qwen2.5 — conservative Inf2 simple agent")
     );
-    assert_eq!(qwen3_4b.serving_modality.as_deref(), Some("text"));
+    assert_eq!(qwen25_inf2.serving_modality.as_deref(), Some("text"));
 
     let qwen3_8b_32k = profiles.get("qwen3_8b_inf2_32k").unwrap();
     assert_eq!(qwen3_8b_32k.visibility.as_deref(), Some("advanced"));
@@ -287,7 +287,7 @@ fn model_profiles_parse_and_include_new_public_profiles() {
     assert!(qwen25_inf2_hard.validated);
     assert_eq!(qwen25_inf2_hard.visibility.as_deref(), Some("hidden"));
 
-    assert!(!profiles.keys().any(|name| name.ends_with("_economy")));
+    assert!(profiles.contains_key("qwen25_15b_inf2_economy"));
     assert!(!profiles.keys().any(|name| name.ends_with("_candidate")));
 }
 
@@ -301,7 +301,9 @@ fn hidden_profiles_do_not_show_in_public_rows() {
     assert!(rows
         .iter()
         .all(|row| row["profile"] != "qwen35_9b_quantized"));
-    assert!(rows.iter().any(|row| row["profile"] == "qwen3_4b_inf2_4k"));
+    assert!(rows
+        .iter()
+        .any(|row| row["profile"] == "qwen25_15b_inf2_economy"));
     assert!(rows
         .iter()
         .all(|row| row["profile"] != "qwen25_coder_7b_inf2_4k"));
@@ -602,7 +604,7 @@ async fn aws_backend_renders_cuda_and_rope_scaling_tfvars() {
     let qwen3_inf2 = AwsBackend::load_or_default(Some(PathBuf::from("missing.toml")))
         .unwrap()
         .with_overrides(
-            Some("qwen3_4b_inf2_4k".to_string()),
+            Some("qwen25_15b_inf2_economy".to_string()),
             Some("inf2".to_string()),
             Some("inf2.xlarge".to_string()),
             Some("economy".to_string()),
@@ -611,14 +613,14 @@ async fn aws_backend_renders_cuda_and_rope_scaling_tfvars() {
         .unwrap();
     let vars = qwen3_inf2.render_deploy_vars().await.unwrap();
     assert_eq!(vars["instance_type"], "inf2.xlarge");
-    assert_eq!(vars["model_id"], "Qwen/Qwen3-4B-Instruct-2507");
+    assert_eq!(vars["model_id"], "Qwen/Qwen2.5-1.5B-Instruct");
     assert_eq!(vars["runtime_pack"], "inf2-neuron");
     assert_eq!(
         vars["fallback_instance_types"],
         serde_json::json!(["inf2.8xlarge"])
     );
     let command = vars["vllm_command"].as_str().unwrap();
-    assert!(command.starts_with("serve Qwen/Qwen3-4B-Instruct-2507 "));
+    assert!(command.starts_with("serve Qwen/Qwen2.5-1.5B-Instruct "));
     assert!(!command.contains("--device neuron"));
 }
 
@@ -710,7 +712,7 @@ fn aws_init_config_text_matches_inf2_first_default() {
     let text = AwsBackend::default_config_text().unwrap();
     assert!(text.contains("accelerator = \"inf2\""));
     assert!(text.contains("instance_type = \"inf2.xlarge\""));
-    assert!(text.contains("model_profile = \"qwen3_4b_inf2_4k\""));
+    assert!(text.contains("model_profile = \"qwen25_15b_inf2_economy\""));
     assert!(text.contains("mode = \"economy\""));
     assert!(text.contains("max_model_len = 1024"));
     assert!(text.contains("language_model_only = false"));
@@ -749,7 +751,7 @@ fn examples_and_readme_are_cleaned_to_active_surface() {
     assert!(readme.contains("OpenAI-compatible chat endpoints"));
     assert!(readme.contains("Ollama"));
     assert!(readme.contains("vLLM CUDA"));
-    assert!(readme.contains("Qwen/Qwen3-4B-Instruct-2507"));
+    assert!(readme.contains("Qwen/Qwen2.5-1.5B-Instruct"));
     assert!(readme.to_lowercase().contains("economy"));
     assert!(readme.to_lowercase().contains("balanced"));
     assert!(readme.contains("Inf2"));
