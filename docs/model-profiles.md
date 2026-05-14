@@ -27,7 +27,7 @@ cargo run -- aws models
 ## Public Defaults
 
 - `qwen35_2b` on `g5.2xlarge` using `Qwen/Qwen3.5-2B`
-- `qwen35_2b_awq` on `g5.2xlarge` using `cyankiwi/Qwen3.5-2B-AWQ-4bit`
+- `qwen35_2b_awq` on `g5.2xlarge` using `cyankiwi/Qwen3.5-2B-AWQ-4bit` with `compressed-tensors`
 - `qwen35_9b` on `g6e.2xlarge` using `Qwen/Qwen3.5-9B`
 - `qwen35_9b_awq` on `g6e.2xlarge` using `QuantTrio/Qwen3.5-9B-AWQ`
 - `qwen25_15b_inf2_economy` on `inf2.xlarge`

@@ -63,7 +63,10 @@ fn model_profiles_parse_and_include_new_public_profiles() {
     assert_eq!(qwen35_2b_awq.recommended_instance, "g5.2xlarge");
     assert_eq!(qwen35_2b_awq.status, "advanced");
     assert_eq!(qwen35_2b_awq.model_id, "cyankiwi/Qwen3.5-2B-AWQ-4bit");
-    assert_eq!(qwen35_2b_awq.quantization.as_deref(), Some("awq"));
+    assert_eq!(
+        qwen35_2b_awq.quantization.as_deref(),
+        Some("compressed-tensors")
+    );
     assert_eq!(qwen35_2b_awq.default_mode.as_deref(), Some("economy"));
     assert_eq!(qwen35_2b_awq.default_pricing.as_deref(), Some("spot"));
     assert_eq!(qwen35_2b_awq.balanced_pricing.as_deref(), Some("on_demand"));
@@ -377,7 +380,7 @@ fn public_model_menu_prioritizes_recommended_and_shows_instances_clearly() {
 
     let qwen35_2b_awq_label =
         profiles::deploy_prompt_label("qwen35_2b_awq", profiles.get("qwen35_2b_awq").unwrap());
-    assert!(qwen35_2b_awq_label.contains("awq"));
+    assert!(qwen35_2b_awq_label.contains("compressed-tensors"));
     assert!(qwen35_2b_awq_label.contains("g5.2xlarge"));
 
     let gemma_label =

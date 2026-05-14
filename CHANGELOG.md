@@ -2,6 +2,12 @@
 
 All notable changes to Emberlane will be documented here.
 
+## v0.3.9
+
+- Clarified the Qwen3.5 CUDA lineup and preserved both base and quantized choices.
+- Fixed the Qwen3.5 2B quantized lane to match its compressed-tensors packaging.
+- Refreshed the model picker and docs so the end-user labels are easier to read.
+
 ## v0.3.8
 
 - Restored the Qwen2.5 Inf2 economy lane.

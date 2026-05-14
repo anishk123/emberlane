@@ -7,7 +7,7 @@ The public NVIDIA path is `vLLM CUDA`.
 Use the CUDA path when you want NVIDIA headroom or to compare against the Inf2 defaults:
 
 - `qwen35_2b` on `g5.2xlarge` for the official Qwen3.5 2B base lane
-- `qwen35_2b_awq` on `g5.2xlarge` for the AWQ version when you want extra memory headroom
+- `qwen35_2b_awq` on `g5.2xlarge` for the AWQ version when you want extra memory headroom; Emberlane launches it with `--quantization compressed-tensors`
 - `qwen35_9b` on `g6e.2xlarge` for the official Qwen3.5 9B base lane
 - `qwen35_9b_awq` on `g6e.2xlarge` for the AWQ version when you want extra memory headroom
 - `qwen3_8b_awq_32k_g5` on `g5.2xlarge` for simple coding if you want a text-only AWQ path

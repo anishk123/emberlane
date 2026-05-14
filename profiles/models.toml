@@ -410,7 +410,7 @@ default_accelerator = "cuda"
 recommended_instance = "g5.2xlarge"
 runtime = "vllm-cuda"
 status = "advanced"
-quantization = "awq"
+quantization = "compressed-tensors"
 max_model_len = 32768
 safe_instance = "g5.4xlarge"
 fallback_instances = ["g5.4xlarge", "g6e.xlarge"]
@@ -428,7 +428,7 @@ require_user_acknowledgement_if_unvalidated = false
 language_model_only = true
 reasoning_parser = "qwen3"
 gpu_memory_utilization = 0.88
-note = "AWQ 4-bit version of the cheap Qwen3.5 2B lane. Useful when you want more memory headroom."
+note = "AWQ-style Qwen3.5 2B packaged as compressed-tensors for vLLM. Emberlane serves it text-only to keep memory down."
 
 [models.qwen35_9b]
 sort_order = 7
